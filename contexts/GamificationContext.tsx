@@ -195,6 +195,8 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     },
     enabled: !!user?.uid,
     staleTime: 1000 * 60 * 5,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
   useEffect(() => {
@@ -205,7 +207,7 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
       setWeeklyGoals(gamificationDataQuery.data.weeklyGoals);
       setNotificationSettings(gamificationDataQuery.data.notificationSettings);
       setTotalPoints(gamificationDataQuery.data.totalPoints);
-    } else if (gamificationDataQuery.isFetched && !gamificationDataQuery.data && user?.uid) {
+    } else if (gamificationDataQuery.isFetched && !gamificationDataQuery.data && user?.uid && !gamificationDataQuery.isError) {
       console.log("No gamification data found, initializing defaults");
       syncGamificationDataToFirebase(user.uid, {
         achievements: DEFAULT_ACHIEVEMENTS,
@@ -213,9 +215,11 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
         weeklyGoals: [],
         notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
         totalPoints: 0,
+      }).catch((error) => {
+        console.error("Error initializing gamification data:", error);
       });
     }
-  }, [gamificationDataQuery.data, gamificationDataQuery.isFetched, user?.uid]);
+  }, [gamificationDataQuery.data, gamificationDataQuery.isFetched, gamificationDataQuery.isError, user?.uid]);
 
   useEffect(() => {
     const setupNotifications = async () => {

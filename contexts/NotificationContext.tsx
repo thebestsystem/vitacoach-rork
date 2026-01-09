@@ -90,20 +90,24 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       const token = tokenData.data;
       console.log("[Notifications] Push token obtained:", token);
 
-      if (isAuthenticated && user) {
-        const userRef = doc(db, "users", user.uid);
-        await setDoc(
-          userRef,
-          {
-            pushTokens: {
-              [Platform.OS]: token,
-              lastUpdated: new Date().toISOString(),
+      if (isAuthenticated && user?.uid) {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          await setDoc(
+            userRef,
+            {
+              pushTokens: {
+                [Platform.OS]: token,
+                lastUpdated: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
             },
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
-        console.log("[Notifications] Push token saved to Firestore");
+            { merge: true }
+          );
+          console.log("[Notifications] Push token saved to Firestore");
+        } catch (err: any) {
+          console.warn("[Notifications] Could not save push token (offline?):", err?.code || err?.message);
+        }
       }
 
       return token;
@@ -115,22 +119,25 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
 
   const loadSettings = useCallback(async () => {
     try {
-      if (isAuthenticated && user) {
-        const userRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userRef);
-
-        if (userDoc.exists() && userDoc.data().notificationSettings) {
-          const firestoreSettings = userDoc.data().notificationSettings as NotificationSettings;
-          setSettings(firestoreSettings);
-          console.log("[Notifications] Settings loaded from Firestore");
-          return;
-        }
-      }
-
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         setSettings(JSON.parse(stored));
         console.log("[Notifications] Settings loaded from AsyncStorage");
+      }
+
+      if (isAuthenticated && user?.uid) {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
+
+          if (userDoc.exists() && userDoc.data().notificationSettings) {
+            const firestoreSettings = userDoc.data().notificationSettings as NotificationSettings;
+            setSettings(firestoreSettings);
+            console.log("[Notifications] Settings loaded from Firestore");
+          }
+        } catch (err: any) {
+          console.warn("[Notifications] Could not load from Firestore (offline?):", err?.code || err?.message);
+        }
       }
     } catch (error) {
       console.error("[Notifications] Error loading settings:", error);
@@ -141,22 +148,25 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
     async (newSettings: NotificationSettings) => {
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
-
-        if (isAuthenticated && user) {
-          const userRef = doc(db, "users", user.uid);
-          await setDoc(
-            userRef,
-            {
-              notificationSettings: newSettings,
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true }
-          );
-          console.log("[Notifications] Settings saved to Firestore");
-        }
-
         setSettings(newSettings);
-        console.log("[Notifications] Settings saved");
+        console.log("[Notifications] Settings saved to AsyncStorage");
+
+        if (isAuthenticated && user?.uid) {
+          try {
+            const userRef = doc(db, "users", user.uid);
+            await setDoc(
+              userRef,
+              {
+                notificationSettings: newSettings,
+                updatedAt: new Date().toISOString(),
+              },
+              { merge: true }
+            );
+            console.log("[Notifications] Settings saved to Firestore");
+          } catch (err: any) {
+            console.warn("[Notifications] Could not save to Firestore (offline?):", err?.code || err?.message);
+          }
+        }
       } catch (error) {
         console.error("[Notifications] Error saving settings:", error);
         throw error;

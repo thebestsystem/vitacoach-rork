@@ -47,13 +47,11 @@ service cloud.firestore {
                        isValidEmail(request.resource.data.email) &&
                        isValidRole(request.resource.data.role) &&
                        request.resource.data.role in ['user', 'guest'] &&
-                       // Prevent setting admin role on creation
                        request.resource.data.role != 'admin';
 
       allow update: if (isOwner(userId) && 
-                        // Prevent users from changing their role or creation date
-                        // Ensure that ONLY allowed fields are changed by verifying that restricted keys are NOT in the diff
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'createdAt', 'email'])) ||
+                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'createdAt', 'email']) ||
+                         request.resource.data.keys().hasAny(['notificationSettings', 'pushTokens', 'updatedAt']))) ||
                        isAdminByToken();
       allow delete: if isAdminByToken();
     }
@@ -70,10 +68,13 @@ service cloud.firestore {
 
     match /healthMetrics/{userId} {
       allow read: if isOwner(userId) || isAdminByToken();
-      allow write: if isOwner(userId) && 
-                      request.resource.data.steps is number &&
-                      request.resource.data.steps >= 0 &&
-                      request.resource.data.steps <= 100000;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && 
+                      (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['steps']) ||
+                       (request.resource.data.steps is number &&
+                        request.resource.data.steps >= 0 &&
+                        request.resource.data.steps <= 100000));
+      allow delete: if isOwner(userId) || isAdminByToken();
     }
 
     // Content Collections (Plans, Logs, etc.)
@@ -114,7 +115,9 @@ service cloud.firestore {
 
     match /gamification/{userId} {
       allow read: if isOwner(userId) || isAdminByToken();
-      allow write: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdminByToken();
     }
 
     match /reflections/{userId} {
