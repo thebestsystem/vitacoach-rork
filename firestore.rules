@@ -125,6 +125,11 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
 
+    match /shoppingList/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
     // --- Critical Collections (Revenue/Quotas) ---
 
     match /subscriptions/{userId} {
