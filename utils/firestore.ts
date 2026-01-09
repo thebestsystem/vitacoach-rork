@@ -297,7 +297,7 @@ export async function syncPartialGamificationData(
 ): Promise<void> {
   try {
     console.log('Syncing partial gamification data to Firebase for user:', userId);
-    await updateUserDocument(userId, firestoreCollections.gamification, updates);
+    await setUserDocument(userId, firestoreCollections.gamification, updates);
     console.log('Partial gamification data synced successfully');
   } catch (error) {
     console.error('Error syncing partial gamification data to Firebase:', error);
