@@ -100,8 +100,8 @@ export default function HomeScreen() {
             <View style={styles.coachHeader}>
               <Image source={{ uri: COACH_AVATAR }} style={styles.coachAvatar} />
               <View style={styles.coachInfo}>
-                <Text style={styles.coachLabel}>Votre Coach IA</Text>
-                <Text style={styles.coachName}>VitaCoach</Text>
+                <Text style={styles.coachLabel}>Votre Coach Exécutif</Text>
+                <Text style={styles.coachName}>Vita</Text>
               </View>
               <View style={styles.coachBadge}>
                 <View style={styles.onlineDot} />

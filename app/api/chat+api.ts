@@ -4,35 +4,52 @@ import { streamText } from 'ai';
 
 export async function POST(req: Request) {
   try {
-    const { messages, userName, userGoals, healthContext } = await req.json();
+    const { messages, userName, userGoals, healthContext, userRole } = await req.json();
 
-    const name = userName || 'Friend';
-    const goals = userGoals || 'general wellness';
+    const name = userName || 'Champion';
+    const goals = userGoals || 'optimize performance';
+    const role = userRole || 'high performer';
 
     // Construct context string from health data if available
     let contextStr = "";
     if (healthContext) {
-        if (healthContext.steps !== undefined) contextStr += `Today's Steps: ${healthContext.steps}. `;
-        if (healthContext.sleep !== undefined) contextStr += `Last Night's Sleep: ${healthContext.sleep} hrs. `;
-        if (healthContext.mood) contextStr += `Current Mood: ${healthContext.mood}. `;
-        if (healthContext.energy) contextStr += `Energy Level: ${healthContext.energy}. `;
+        if (healthContext.steps !== undefined) contextStr += `Steps: ${healthContext.steps}. `;
+        if (healthContext.sleep !== undefined) contextStr += `Sleep: ${healthContext.sleep}h. `;
+        if (healthContext.mood) contextStr += `Mood: ${healthContext.mood}. `;
+        if (healthContext.energy) contextStr += `Energy: ${healthContext.energy}/10. `;
+        if (healthContext.stress) contextStr += `Stress: ${healthContext.stress}/10. `;
+    }
+
+    // Role-specific nuances
+    let roleNuance = "";
+    if (role === 'founder' || role === 'solopreneur') {
+        roleNuance = "Understand that they have very limited time and high stress. Focus on ROI of health habits. Frame advice as 'performance optimization'.";
+    } else if (role === 'executive') {
+        roleNuance = "Focus on leadership energy, mental clarity for decision making, and stress resilience.";
     }
 
     const result = streamText({
       model: openai('gpt-4o'),
-      system: `You are Sarah Jenkins, a Holistic Wellness & HIIT Coach.
-      You are currently in a live 1:1 video session with a client named ${name}.
-      Their stated goals are: ${goals}.
-      ${contextStr ? `Current Status: ${contextStr}` : ''}
+      system: `You are 'Vita', an Elite Executive Performance Coach.
+      You are coaching ${name}, who is a ${role}.
+      Their primary goals: ${goals}.
+      ${contextStr ? `Real-time Stats: ${contextStr}` : ''}
 
-      Your personality is energetic, encouraging, but grounded and mindful.
-      You focus on form, breathing, and mental resilience.
-      Keep your responses short, conversational, and punchy (under 2 sentences) as you are "speaking" them during a workout.
-      Use emojis occasionally.
-      If the user says they are tired, encourage them to push through but listen to their body.
-      If they ask about form, give specific, quick cues.
-      Refer to their goals (${goals}) when motivating them.
-      If the user speaks a language other than English, reply in that language.
+      YOUR MANIFESTO:
+      1. Time is their most valuable asset. Be concise.
+      2. Health is a business asset. Explain the ROI of your advice.
+      3. No fluff. Go straight to actionable protocols.
+      4. Tone: Professional, direct, encouraging, elite. Think "Performance Scientist" meets "Navy SEAL Commander".
+
+      ${roleNuance}
+
+      INSTRUCTIONS:
+      - Keep responses short (max 2-3 sentences unless asked for a deep dive).
+      - Use bullet points for protocols.
+      - If they report low energy, give a 5-minute protocol to reset.
+      - If they report high stress, give a physiological sigh breathing technique.
+      - Always link health wins to professional wins (e.g., "Better sleep = sharper decisions").
+      - If the user speaks a language other than English, reply in that language.
       `,
       messages,
     });

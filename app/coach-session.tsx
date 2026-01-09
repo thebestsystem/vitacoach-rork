@@ -117,6 +117,7 @@ export default function CoachSessionScreen() {
             messages: [...chatMessages, userMessage],
             userName: user?.displayName,
             userGoals: userProfile?.goals?.join(", "),
+            userRole: userProfile?.role,
             healthContext: {
               steps: healthMetrics?.steps,
               sleep: healthMetrics?.sleep,

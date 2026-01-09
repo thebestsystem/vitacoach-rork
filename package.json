@@ -55,8 +55,7 @@
     "text-encoding-polyfill": "^0.6.7",
     "web-streams-polyfill": "^4.2.0",
     "zod": "^4.1.12",
-    "zustand": "^5.0.2",
-    "@rork-ai/toolkit-sdk": "0.2.51"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -65,8 +64,7 @@
     "@types/react": "~19.1.10",
     "eslint": "^9.39.2",
     "eslint-config-expo": "9.2.0",
-    "typescript": "~5.9.2",
-    "vitest": "^4.0.16"
+    "typescript": "~5.9.2"
   },
   "private": true
 }
