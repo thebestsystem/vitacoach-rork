@@ -31,11 +31,8 @@ export default function SubscriptionScreen() {
     trialDaysRemaining,
     allPlans,
     upgradePlan,
-    cancelSubscription,
-    reactivateSubscription,
     restorePurchases,
     isUpgrading,
-    isCanceling,
   } = useSubscription();
 
   const handleUpgrade = async (plan: SubscriptionPlan) => {
@@ -65,33 +62,22 @@ export default function SubscriptionScreen() {
 
   const handleCancelSubscription = () => {
     Alert.alert(
-      "Cancel Subscription",
-      "Your subscription will remain active until the end of your billing period. Are you sure?",
+      "Manage Subscription",
+      "Please manage your subscription through your App Store settings.",
       [
-        { text: "Keep Subscription", style: "cancel" },
-        {
-          text: "Cancel",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await cancelSubscription();
-              Alert.alert("Canceled", "Your subscription will end at the current period.");
-            } catch {
-              Alert.alert("Error", "Failed to cancel subscription.");
-            }
-          },
-        },
+        { text: "OK", style: "default" },
       ]
     );
   };
 
   const handleReactivate = async () => {
-    try {
-      await reactivateSubscription();
-      Alert.alert("Reactivated", "Your subscription has been reactivated!");
-    } catch {
-      Alert.alert("Error", "Failed to reactivate subscription.");
-    }
+    Alert.alert(
+        "Manage Subscription",
+        "Please manage your subscription through your App Store settings.",
+        [
+          { text: "OK", style: "default" },
+        ]
+      );
   };
 
   const getPlanButtonText = (plan: SubscriptionPlan): string => {
@@ -229,10 +215,9 @@ export default function SubscriptionScreen() {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={handleCancelSubscription}
-            disabled={isCanceling}
           >
             <Text style={styles.cancelButtonText}>
-              {isCanceling ? "Canceling..." : "Cancel Subscription"}
+              Manage Subscription
             </Text>
           </TouchableOpacity>
         )}

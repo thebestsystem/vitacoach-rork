@@ -51,6 +51,7 @@ export default function PremiumLockedFeature({
       </View>
 
       {Platform.OS === 'web' ? (
+        // @ts-ignore: backdropFilter is valid web style but not in RN types
         <View style={[styles.overlay, { backgroundColor: overlayColor, backdropFilter: 'blur(10px)' }]}>
            {renderLockContent()}
         </View>
