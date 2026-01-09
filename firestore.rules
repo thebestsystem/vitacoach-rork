@@ -1,0 +1,187 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+    
+    function isAdminByToken() {
+      // Check custom claim first, or fallback to user document role if necessary (costly)
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+
+    function isValidEmail(email) {
+      return email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+    }
+    
+    function isValidSubscriptionPlan(plan) {
+      return plan in ['free', 'basic', 'pro', 'premium'];
+    }
+
+    function isValidSubscriptionStatus(status) {
+      return status in ['active', 'trial', 'canceled', 'expired'];
+    }
+
+    function isValidRole(role) {
+      return role in ['user', 'guest', 'admin'];
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow create: if isOwner(userId) && 
+                       request.resource.data.email is string &&
+                       isValidEmail(request.resource.data.email) &&
+                       isValidRole(request.resource.data.role) &&
+                       request.resource.data.role in ['user', 'guest'] &&
+                       // Prevent setting admin role on creation
+                       request.resource.data.role != 'admin';
+
+      allow update: if (isOwner(userId) && 
+                        // Prevent users from changing their role or creation date
+                        // Ensure that ONLY allowed fields are changed by verifying that restricted keys are NOT in the diff
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'createdAt', 'email'])) ||
+                       isAdminByToken();
+      allow delete: if isAdminByToken();
+    }
+
+    match /userProfiles/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId); // Validation could be added for strict profile data
+    }
+
+    match /onboarding/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /healthMetrics/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId) && 
+                      request.resource.data.steps is number &&
+                      request.resource.data.steps >= 0 &&
+                      request.resource.data.steps <= 100000;
+    }
+
+    // Content Collections (Plans, Logs, etc.)
+    match /workoutPlans/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /mealPlans/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /wellnessCheckIns/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /mentalWellnessPlans/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /healthHistory/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /exerciseLogs/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /mealLogs/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /gamification/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    match /reflections/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+      allow write: if isOwner(userId);
+    }
+
+    // --- Critical Collections (Revenue/Quotas) ---
+
+    match /subscriptions/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+
+      // Strict validation for creation
+      allow create: if isOwner(userId) && 
+                       isValidSubscriptionPlan(request.resource.data.plan) &&
+                       isValidSubscriptionStatus(request.resource.data.status);
+
+      // Strict validation for updates
+      // User can ONLY update 'cancelAtPeriodEnd'
+      allow update: if (isOwner(userId) && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelAtPeriodEnd']) &&
+                        request.resource.data.cancelAtPeriodEnd is bool) ||
+                       isAdminByToken();
+
+      allow delete: if isAdminByToken();
+    }
+    
+    match /quotaUsage/{userId} {
+      allow read: if isOwner(userId) || isAdminByToken();
+
+      // Ensure all quota fields are non-negative integers
+      // Ensure quotas can only INCREASE (or stay same), unless a reset is happening (checking lastReset/period updates)
+      allow write: if isOwner(userId) && 
+                      (request.resource.data.workoutPlansThisMonth is number && request.resource.data.workoutPlansThisMonth >= 0) &&
+                      (request.resource.data.mealPlansThisMonth is number && request.resource.data.mealPlansThisMonth >= 0) &&
+                      (request.resource.data.aiCoachMessagesToday is number && request.resource.data.aiCoachMessagesToday >= 0) &&
+                      (request.resource.data.exerciseLogsToday is number && request.resource.data.exerciseLogsToday >= 0) &&
+                      (request.resource.data.mealLogsToday is number && request.resource.data.mealLogsToday >= 0) &&
+                      (request.resource.data.wellnessCheckInsToday is number && request.resource.data.wellnessCheckInsToday >= 0) &&
+                      (request.resource.data.storageUsed is number && request.resource.data.storageUsed >= 0) &&
+
+                      // Anti-cheat: Prevent decrementing quotas unless it's a period reset
+                      (
+                        // If it's a reset (lastReset or periods changed), allow changes
+                        request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastReset', 'currentPeriodStart', 'currentPeriodEnd'])
+                        ||
+                        // Otherwise, ensure values are >= old values (increment only)
+                        (
+                          request.resource.data.workoutPlansThisMonth >= resource.data.workoutPlansThisMonth &&
+                          request.resource.data.mealPlansThisMonth >= resource.data.mealPlansThisMonth &&
+                          request.resource.data.aiCoachMessagesToday >= resource.data.aiCoachMessagesToday &&
+                          request.resource.data.exerciseLogsToday >= resource.data.exerciseLogsToday &&
+                          request.resource.data.mealLogsToday >= resource.data.mealLogsToday &&
+                          request.resource.data.wellnessCheckInsToday >= resource.data.wellnessCheckInsToday
+                          // storageUsed can go down if files are deleted, so we don't restrict it here
+                        )
+                      );
+    }
+
+    // Admin Settings (Config) - Read Only for Users
+    match /adminSettings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdminByToken();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
