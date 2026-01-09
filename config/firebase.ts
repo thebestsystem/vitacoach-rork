@@ -3,37 +3,14 @@ import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
-const getFirebaseConfig = () => {
-  const isWeb = Platform.OS === 'web';
-  
-  if (isWeb) {
-    return {
-      apiKey: "AIzaSyCvUy3CIpwaUqtz2IDKCRUEmQG-RXPraIc",
-      authDomain: "wellness-ai-coach-rork.firebaseapp.com",
-      projectId: "wellness-ai-coach-rork",
-      storageBucket: "wellness-ai-coach-rork.firebasestorage.app",
-      messagingSenderId: "590551382301",
-      appId: "1:590551382301:web:287ed2c79dedd9936989f4",
-      measurementId: "G-2F8WCZB2G3"
-    };
-  }
-  
-  return {
-    apiKey: Platform.select({
-      ios: "AIzaSyA9wNo0bK1MOVfo9qt5AgLMYPGSkip_sZE",
-      android: "AIzaSyA9t6h4dulvhYf5OmaFa3CHSz2x5R6ny_o",
-      default: "AIzaSyCvUy3CIpwaUqtz2IDKCRUEmQG-RXPraIc",
-    }),
-    authDomain: "wellness-ai-coach-rork.firebaseapp.com",
-    projectId: "wellness-ai-coach-rork",
-    storageBucket: "wellness-ai-coach-rork.firebasestorage.app",
-    messagingSenderId: "590551382301",
-    appId: Platform.select({
-      ios: "1:590551382301:ios:5eaa88c0200a37886989f4",
-      android: "1:590551382301:android:682cc947ac0274666989f4",
-      default: "AIzaSyCvUy3CIpwaUqtz2IDKCRUEmQG-RXPraIc",
-    }),
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyAagwNPIu2RYyFZwKDwbdpNHEnDuzwnEh0",
+  authDomain: "vitacoach-85a22.firebaseapp.com",
+  projectId: "vitacoach-85a22",
+  storageBucket: "vitacoach-85a22.firebasestorage.app",
+  messagingSenderId: "744834489008",
+  appId: "1:744834489008:web:21e1f2cef266ddd79db975",
+  measurementId: "G-HJDKCT4VX9"
 };
 
 let app: FirebaseApp;
@@ -42,7 +19,7 @@ let db: Firestore;
 let initError: Error | null = null;
 
 try {
-  const firebaseConfig = getFirebaseConfig();
+  
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   console.log('Firebase app initialized successfully');
 
@@ -57,7 +34,7 @@ try {
       try {
         auth = getAuth(app);
         console.log('Firebase auth retrieved');
-      } catch (e) {
+      } catch {
         auth = initializeAuth(app, {
           persistence: getReactNativePersistence(AsyncStorage)
         });
