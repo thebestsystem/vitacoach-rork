@@ -144,32 +144,45 @@ export async function getGlobalConfig(): Promise<GlobalConfig> {
       }
   }
 
-  // 3. Fetch from Firestore
+  // 3. Fetch from Firestore (with timeout to avoid blocking on offline)
   try {
-    const configRef = doc(db, "adminSettings", "globalConfig");
-    const configDoc = await getDoc(configRef);
+    const fetchPromise = (async () => {
+      const configRef = doc(db, "adminSettings", "globalConfig");
+      const configDoc = await getDoc(configRef);
+      return configDoc;
+    })();
+    
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 5000);
+    });
+    
+    const configDoc = await Promise.race([fetchPromise, timeoutPromise]);
 
-    if (configDoc.exists()) {
+    if (configDoc && configDoc.exists()) {
       const data = configDoc.data() as Partial<GlobalConfig>;
-      // Deep merge with default config to ensure all keys exist
       cachedConfig = deepMerge(DEFAULT_CONFIG, data);
       lastFetchTime = now;
 
-      // 4. Update Disk Cache
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
           data: cachedConfig,
           timestamp: now
-      })).catch(e => logger.warn("Failed to write config to disk", "Config"));
+      })).catch(() => {});
 
-      logger.info("Fetched global config from Firestore", "Config");
-    } else {
-      // If doc doesn't exist, use defaults but don't crash
+      logger.debug("Fetched global config from Firestore", "Config");
+    } else if (configDoc && !configDoc.exists()) {
       if (!cachedConfig) cachedConfig = DEFAULT_CONFIG;
-      logger.warn("Global config not found, using defaults", "Config");
+      logger.debug("Global config not found, using defaults", "Config");
+    } else {
+      if (!cachedConfig) cachedConfig = DEFAULT_CONFIG;
+      logger.debug("Config fetch timed out, using defaults", "Config");
     }
-  } catch (error) {
-    logger.error("Failed to fetch global config", error as Error, "Config");
-    // Fallback to defaults or stale cache
+  } catch (error: any) {
+    const isOffline = error?.code === 'unavailable' || error?.message?.includes('offline');
+    if (isOffline) {
+      logger.debug("Device offline, using cached/default config", "Config");
+    } else {
+      logger.warn("Failed to fetch global config", "Config");
+    }
     if (!cachedConfig) cachedConfig = DEFAULT_CONFIG;
   }
 

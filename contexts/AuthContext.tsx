@@ -77,69 +77,79 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log("[Auth] State changed:", currentUser?.uid);
       
       if (currentUser) {
-        try {
-          const tokenResult = await currentUser.getIdTokenResult(false);
-          const claims = tokenResult.claims as any;
-          
-          const userClaimsData: UserClaims = {
-            role: (claims.role as UserRole) || "user",
-            subscriptionPlan: claims.subscriptionPlan || "free",
-            subscriptionStatus: claims.subscriptionStatus || "trial",
-            trialEndsAt: claims.trialEndsAt,
-          };
-          
-          setUserClaims(userClaimsData);
-          
-          const userRef = doc(db, "users", currentUser.uid);
-          const userDoc = await getDoc(userRef);
-          
-          if (!userDoc.exists()) {
-            console.log("[Auth] Creating user document");
-            await setDoc(userRef, {
-              email: currentUser.email,
-              createdAt: new Date().toISOString(),
-              role: userClaimsData.role,
-              subscriptionPlan: userClaimsData.subscriptionPlan,
-              subscriptionStatus: userClaimsData.subscriptionStatus,
-              updatedAt: new Date().toISOString(),
-            });
-          }
-          
-          setUser({ ...currentUser, claims: userClaimsData } as ExtendedUser);
-          
-          setIsMigrating(true);
-          const needsMigration = await checkIfMigrationNeeded();
-          if (needsMigration) {
-            console.log("[Auth] Migration needed for user:", currentUser.uid);
-            const result = await migrateLocalDataToFirebase(currentUser.uid);
-            console.log("[Auth] Migration result:", result);
+        const defaultClaims: UserClaims = {
+          role: "user",
+          subscriptionPlan: "free",
+          subscriptionStatus: "trial",
+        };
+        
+        setUser({ ...currentUser, claims: defaultClaims } as ExtendedUser);
+        setUserClaims(defaultClaims);
+        setMigrationComplete(true);
+        setLoading(false);
+        
+        (async () => {
+          try {
+            const tokenResult = await currentUser.getIdTokenResult(false);
+            const claims = tokenResult.claims as any;
             
-            if (result.success) {
-              console.log("[Auth] Migration completed successfully");
-              setMigrationComplete(true);
-            } else {
-              console.error("[Auth] Migration failed:", result.error);
+            const userClaimsData: UserClaims = {
+              role: (claims.role as UserRole) || "user",
+              subscriptionPlan: claims.subscriptionPlan || "free",
+              subscriptionStatus: claims.subscriptionStatus || "trial",
+              trialEndsAt: claims.trialEndsAt,
+            };
+            
+            setUserClaims(userClaimsData);
+            setUser({ ...currentUser, claims: userClaimsData } as ExtendedUser);
+            console.log("[Auth] User claims loaded successfully");
+          } catch (err: any) {
+            console.warn("[Auth] Could not load user claims (offline?):", err?.code || err?.message);
+          }
+        })();
+        
+        (async () => {
+          try {
+            const userRef = doc(db, "users", currentUser.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+              console.log("[Auth] Creating user document");
+              await setDoc(userRef, {
+                email: currentUser.email,
+                createdAt: new Date().toISOString(),
+                role: "user",
+                subscriptionPlan: "free",
+                subscriptionStatus: "trial",
+                updatedAt: new Date().toISOString(),
+              });
             }
-          } else {
-            setMigrationComplete(true);
+          } catch (err: any) {
+            console.warn("[Auth] Could not sync user document (offline?):", err?.code || err?.message);
           }
-          setIsMigrating(false);
-        } catch (err: any) {
-          console.error("[Auth] Error loading user claims:", err);
-          if (err?.code === "auth/quota-exceeded") {
-            console.warn("[Auth] Token refresh quota exceeded, using cached user data");
+        })();
+        
+        (async () => {
+          try {
+            setIsMigrating(true);
+            const needsMigration = await checkIfMigrationNeeded();
+            if (needsMigration) {
+              console.log("[Auth] Migration needed for user:", currentUser.uid);
+              const result = await migrateLocalDataToFirebase(currentUser.uid);
+              console.log("[Auth] Migration result:", result);
+            }
+          } catch (err: any) {
+            console.warn("[Auth] Migration check failed (offline?):", err?.code || err?.message);
+          } finally {
+            setIsMigrating(false);
           }
-          setUser(currentUser as ExtendedUser);
-          setIsMigrating(false);
-          setMigrationComplete(true);
-        }
+        })();
       } else {
         setUser(null);
         setUserClaims(null);
         setMigrationComplete(false);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();
