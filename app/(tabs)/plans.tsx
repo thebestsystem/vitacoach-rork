@@ -112,7 +112,8 @@ export default function PlansScreen() {
                       <Calendar size={14} color={colors.textSecondary} strokeWidth={2} />
                       <Text style={styles.metaText}>{plan.exercises.length} exercises</Text>
                     </View>
-                    <View style={[styles.badge, styles[`badge${plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1)}` as keyof typeof styles]]}>
+                    {/* @ts-ignore: Dynamic style access */}
+                    <View style={[styles.badge, styles[`badge${plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1)}`]]}>
                       <Text style={styles.badgeText}>{plan.difficulty}</Text>
                     </View>
                   </View>

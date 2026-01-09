@@ -27,6 +27,8 @@ import { BlurView } from "expo-blur";
 import colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHealth } from "@/contexts/HealthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { checkQuota, incrementQuota } from "@/utils/quotas";
 import { getBaseUrl } from "@/utils/baseUrl";
 
 // Mock Coach Data
@@ -42,6 +44,7 @@ export default function CoachSessionScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { userProfile, healthMetrics } = useHealth();
+  const { currentPlan, isTrialActive, quotaUsage, quotaLimits } = useSubscription();
 
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
@@ -71,16 +74,54 @@ export default function CoachSessionScreen() {
     };
   }, [sessionState]);
 
-  // Simulate connection flow
+  // Simulate connection flow and check quotas
   useEffect(() => {
-    if (sessionState === "waiting") {
-      const timer = setTimeout(() => {
-        setSessionState("connecting");
-        setTimeout(() => setSessionState("active"), 1500);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [sessionState]);
+    const initSession = async () => {
+        if (sessionState === "waiting") {
+            // Check Quotas before starting
+            if (user?.uid) {
+                // If unlimited (-1) or usage < limit
+                const limit = quotaLimits.aiCoachMessagesPerDay;
+                const usage = quotaUsage?.aiCoachMessagesToday || 0;
+
+                // Allow if Pro/Trial, OR if under limit
+                const isAllowed =
+                    currentPlan === 'pro' ||
+                    currentPlan === 'premium' ||
+                    isTrialActive ||
+                    limit === -1 ||
+                    usage < limit;
+
+                if (!isAllowed) {
+                    Alert.alert(
+                        "Limit Reached",
+                        "You've reached your daily limit for AI Coach sessions. Upgrade to Pro for unlimited access.",
+                        [
+                            { text: "Cancel", style: "cancel", onPress: () => router.back() },
+                            { text: "Upgrade", onPress: () => router.push('/paywall') }
+                        ]
+                    );
+                    return;
+                }
+
+                // Increment quota if starting a session (assuming 1 session = 1 "message" unit or track sessions separately)
+                // For now, we'll increment "aiCoachMessagesToday" by 1 to represent the session start
+                try {
+                    await incrementQuota(user.uid, 'aiCoachMessagesToday', 1);
+                } catch (e) {
+                    console.error("Failed to increment quota", e);
+                }
+            }
+
+            const timer = setTimeout(() => {
+                setSessionState("connecting");
+                setTimeout(() => setSessionState("active"), 1500);
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    };
+    initSession();
+  }, [sessionState, user?.uid, currentPlan, isTrialActive, quotaLimits, quotaUsage]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
