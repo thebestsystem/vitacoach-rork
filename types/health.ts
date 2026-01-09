@@ -2,6 +2,7 @@ export interface UserProfile {
   name: string;
   age?: number;
   gender?: "male" | "female" | "other";
+  role?: ProfessionalRole;
   height?: number;
   weight?: number;
   goals: Goal[];
@@ -12,13 +13,27 @@ export interface UserProfile {
   menstrualCycle?: MenstrualCycleData;
 }
 
+export type ProfessionalRole = "founder" | "solopreneur" | "executive" | "freelancer" | "employee" | "student";
+
 export interface MenstrualCycleData {
   lastPeriodStart: string;
   cycleLength: number; // e.g., 28 days
   phase?: "menstrual" | "follicular" | "ovulation" | "luteal";
 }
 
-export type Goal = "weight_loss" | "muscle_gain" | "mental_wellness" | "better_sleep" | "stress_management" | "nutrition" | "flexibility" | "endurance";
+export type Goal =
+  | "weight_loss"
+  | "muscle_gain"
+  | "mental_wellness"
+  | "better_sleep"
+  | "stress_management"
+  | "nutrition"
+  | "flexibility"
+  | "endurance"
+  | "boost_energy"
+  | "increase_focus"
+  | "prevent_burnout"
+  | "optimize_performance";
 
 export interface HealthMetrics {
   steps: number;

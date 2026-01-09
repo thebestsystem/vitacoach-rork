@@ -1,4 +1,4 @@
-import { Heart, Target, Activity, User, Zap, TrendingUp, Bell, Check, MessageCircle } from "lucide-react-native";
+import { Heart, Target, Activity, User, Zap, TrendingUp, Bell, Check, MessageCircle, Briefcase, Brain, Battery } from "lucide-react-native";
 import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Animated, ActivityIndicator, FlatList, Dimensions, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,16 +6,26 @@ import { useRouter } from "expo-router";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
-import type { Goal } from "@/types/health";
+import type { Goal, ProfessionalRole } from "@/types/health";
 import * as Haptics from "expo-haptics";
 
 const GOALS_OPTIONS: { id: Goal; label: string; icon: typeof Heart }[] = [
+  { id: "optimize_performance", label: "Performance Max", icon: Zap },
+  { id: "increase_focus", label: "Focus & Clarté", icon: Brain },
+  { id: "prevent_burnout", label: "Éviter le Burnout", icon: Battery },
+  { id: "boost_energy", label: "Énergie Stable", icon: Activity },
+  { id: "stress_management", label: "Gestion du Stress", icon: Heart },
+  { id: "better_sleep", label: "Sommeil Réparateur", icon: Heart },
   { id: "weight_loss", label: "Perte de poids", icon: Target },
   { id: "muscle_gain", label: "Prise de muscle", icon: Activity },
-  { id: "mental_wellness", label: "Bien-être mental", icon: Heart },
-  { id: "better_sleep", label: "Meilleur sommeil", icon: Heart },
-  { id: "stress_management", label: "Gestion du stress", icon: Heart },
-  { id: "nutrition", label: "Meilleure nutrition", icon: Activity },
+];
+
+const ROLES: { id: ProfessionalRole; label: string; desc: string }[] = [
+  { id: "founder", label: "Fondateur", desc: "Je construis une entreprise" },
+  { id: "solopreneur", label: "Solopreneur", desc: "Je gère tout seul" },
+  { id: "executive", label: "Dirigeant", desc: "Je gère des équipes" },
+  { id: "freelancer", label: "Freelance", desc: "Je travaille à mon compte" },
+  { id: "employee", label: "Salarié", desc: "Je veux performer au travail" },
 ];
 
 const FITNESS_LEVELS = [
@@ -28,29 +38,29 @@ const FEATURES = [
   {
     id: 1,
     icon: MessageCircle,
-    title: "Coach IA Personnel",
-    description: "Un coach virtuel disponible 24/7 pour vous accompagner dans votre parcours de bien-être",
+    title: "Coach Exécutif IA",
+    description: "Un coach de performance disponible 24/7 pour optimiser votre énergie et votre productivité",
     color: colors.primary,
   },
   {
     id: 2,
-    icon: Target,
-    title: "Conseils Personnalisés",
-    description: "Des recommandations adaptées à votre profil, vos objectifs et votre mode de vie",
+    icon: Brain,
+    title: "Focus & Clarté",
+    description: "Des protocoles pour éliminer le brouillard mental et maximiser vos heures de Deep Work",
     color: colors.secondary,
   },
   {
     id: 3,
-    icon: TrendingUp,
-    title: "Suivi en Temps Réel",
-    description: "Analysez vos progrès et ajustez votre stratégie avec l'aide de votre coach",
+    icon: Battery,
+    title: "Gestion d'Énergie",
+    description: "Analysez vos cycles pour travailler quand vous êtes le plus performant",
     color: colors.accent,
   },
   {
     id: 4,
     icon: Zap,
-    title: "Motivation Quotidienne",
-    description: "Restez motivé avec des messages personnalisés et des objectifs adaptés",
+    title: "ROI Santé",
+    description: "Transformez votre santé en avantage compétitif pour votre business",
     color: colors.warning,
   },
 ];
@@ -64,6 +74,7 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<number>(0);
   const [name, setName] = useState<string>("");
   const [age, setAge] = useState<string>("");
+  const [role, setRole] = useState<ProfessionalRole>("founder");
   const [selectedGoals, setSelectedGoals] = useState<Goal[]>([]);
   const [fitnessLevel, setFitnessLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [fadeAnim] = useState(new Animated.Value(1));
@@ -116,6 +127,7 @@ export default function OnboardingScreen() {
       const profileData = {
         name,
         age: age ? parseInt(age, 10) : undefined,
+        role,
         goals: selectedGoals,
         fitnessLevel,
       };
@@ -152,9 +164,9 @@ export default function OnboardingScreen() {
               <View style={styles.welcomeIconContainer}>
                 <MessageCircle size={80} color={colors.primary} strokeWidth={1.5} />
               </View>
-              <Text style={styles.welcomeTitle}>Votre Coach Personnel{"\n"}Toujours Disponible</Text>
+              <Text style={styles.welcomeTitle}>Votre OS de{"\n"}Haute Performance</Text>
               <Text style={styles.welcomeSubtitle}>
-                Un accompagnement IA personnalisé pour atteindre vos objectifs de santé et bien-être
+                Optimisez votre énergie, votre focus et votre santé pour soutenir votre ambition.
               </Text>
             </View>
 
@@ -163,7 +175,7 @@ export default function OnboardingScreen() {
               onPress={nextStep}
               testID="get-started-button"
             >
-              <Text style={styles.buttonText}>Commencer</Text>
+              <Text style={styles.buttonText}>Optimiser ma performance</Text>
             </TouchableOpacity>
           </Animated.View>
         );
@@ -260,6 +272,40 @@ export default function OnboardingScreen() {
                 keyboardType="number-pad"
                 testID="age-input"
               />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Votre Rôle</Text>
+              <View style={styles.levelsContainer}>
+              {ROLES.map((r) => {
+                const isSelected = role === r.id;
+                return (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={[styles.levelCard, isSelected && styles.levelCardSelected, { padding: 16, marginBottom: 8 }]}
+                    onPress={() => {
+                      if (Platform.OS !== 'web') {
+                        Haptics.selectionAsync();
+                      }
+                      setRole(r.id);
+                    }}
+                    testID={`role-${r.id}`}
+                  >
+                    <Text style={[styles.levelTitle, isSelected && styles.levelTitleSelected, { fontSize: 16 }]}>
+                      {r.label}
+                    </Text>
+                    <Text style={[styles.levelDesc, isSelected && styles.levelDescSelected, { fontSize: 12 }]}>
+                      {r.desc}
+                    </Text>
+                    {isSelected && (
+                      <View style={[styles.selectedBadge, { top: 12, right: 12 }]}>
+                        <Check size={14} color={colors.primary} strokeWidth={3} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+              </View>
             </View>
 
             <View style={styles.buttonRow}>
@@ -469,7 +515,7 @@ export default function OnboardingScreen() {
   };
 
   const insets = useSafeAreaInsets();
-  const totalSteps = 6;
+  const totalSteps = 6; // Steps count remains same as we added fields into existing step or modified existing
   const progress = ((step + 1) / totalSteps) * 100;
 
   return (
