@@ -12,13 +12,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, ShoppingCart, Share, Trash2 } from "lucide-react-native";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
+import { useShoppingStore } from "@/stores/shoppingStore";
 import { ShoppingItem } from "@/types/health";
 import { deriveIngredients } from "@/utils/shoppingList";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { mealPlans, shoppingList, toggleShoppingItem, addToShoppingList, updateShoppingList, removeShoppingItems } = useHealth();
+  const { mealPlans } = useHealth();
+  const { shoppingList, toggleShoppingItem, addToShoppingList, updateShoppingList, removeShoppingItems } = useShoppingStore();
+  const { user } = useAuth();
 
   const syncFromMealPlans = () => {
     const itemMap = new Map<string, ShoppingItem>();
@@ -51,7 +55,7 @@ export default function ShoppingListScreen() {
       });
     });
 
-    updateShoppingList(Array.from(itemMap.values()));
+    updateShoppingList(Array.from(itemMap.values()), user?.uid);
     Alert.alert("Synced", "Shopping list updated from meal plans.");
   };
 
@@ -76,7 +80,7 @@ export default function ShoppingListScreen() {
         "Are you sure you want to remove all checked items?",
         [
             { text: "Cancel", style: "cancel" },
-            { text: "Clear", style: "destructive", onPress: () => removeShoppingItems(checkedIds) }
+            { text: "Clear", style: "destructive", onPress: () => removeShoppingItems(checkedIds, user?.uid) }
         ]
     );
   };
@@ -85,7 +89,7 @@ export default function ShoppingListScreen() {
     return (
         <TouchableOpacity
             style={[styles.itemRow, item.checked && styles.itemRowChecked]}
-            onPress={() => toggleShoppingItem(item.id)}
+            onPress={() => toggleShoppingItem(item.id, user?.uid)}
             activeOpacity={0.7}
         >
             <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>

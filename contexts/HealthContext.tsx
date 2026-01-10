@@ -1,6 +1,7 @@
 import createContextHook from "@nkzw/create-context-hook";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import type {
   UserProfile,
   HealthMetrics,
@@ -33,7 +34,7 @@ import { logger } from "@/utils/logger";
 import { summarizeReflections } from "@/utils/reflectionInsights";
 import { generateCoachPlaybook } from "@/utils/coachPlaybook";
 import { healthSyncService } from "@/utils/healthSync";
-import { mergeShoppingLists } from "@/utils/shoppingList";
+import { useShoppingStore } from "@/stores/shoppingStore";
 
 export const [HealthProvider, useHealth] = createContextHook(() => {
   const { user } = useAuth();
@@ -52,11 +53,12 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
   const [reflections, setReflections] = useState<ReflectionEntry[]>([]);
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [syncError, setSyncError] = useState<UserFriendlyError | null>(null);
   const [retryCount] = useState<number>(0);
 
-  // Auto-sync health data on mount
+  const { setShoppingList } = useShoppingStore();
+
+  // Auto-sync health data on mount and app foreground
   useEffect(() => {
     const syncNativeHealth = async () => {
       try {
@@ -77,7 +79,20 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
         console.warn("Native Health Sync failed", e);
       }
     };
+
+    // Initial sync
     syncNativeHealth();
+
+    // App state listener
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        syncNativeHealth();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const healthDataQuery = useQuery({
@@ -556,96 +571,6 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
     [reflections, user?.uid]
   );
 
-  const toggleShoppingItem = useCallback(
-    async (id: string) => {
-      const updated = shoppingList.map((item) =>
-        item.id === id ? { ...item, checked: !item.checked } : item
-      );
-      setShoppingList(updated);
-
-      if (user?.uid) {
-        try {
-          await syncPartialHealthData(user.uid, {
-            shoppingList: updated,
-          });
-        } catch (error) {
-          const friendlyError = handleFirebaseError(error, 'toggleShoppingItem', { userId: user.uid });
-          setSyncError(friendlyError);
-          console.warn('Failed to sync shopping list', friendlyError);
-        }
-      }
-    },
-    [shoppingList, user?.uid]
-  );
-
-  const addToShoppingList = useCallback(
-    async (items: ShoppingItem[]) => {
-      // Avoid duplicates by ID
-      const existingIds = new Set(shoppingList.map((i) => i.id));
-      const newItems = items.filter((i) => !existingIds.has(i.id));
-
-      if (newItems.length === 0) return;
-
-      const updated = [...shoppingList, ...newItems];
-      setShoppingList(updated);
-
-      if (user?.uid) {
-        try {
-          await syncPartialHealthData(user.uid, {
-            shoppingList: updated,
-          });
-        } catch (error) {
-          const friendlyError = handleFirebaseError(error, 'addToShoppingList', { userId: user.uid });
-          setSyncError(friendlyError);
-          console.warn('Failed to sync shopping list', friendlyError);
-        }
-      }
-    },
-    [shoppingList, user?.uid]
-  );
-
-  const updateShoppingList = useCallback(
-    async (items: ShoppingItem[]) => {
-      const { hasChanges, list: updated } = mergeShoppingLists(shoppingList, items);
-
-      if (!hasChanges) return;
-
-      setShoppingList(updated);
-
-      if (user?.uid) {
-        try {
-          await syncPartialHealthData(user.uid, {
-            shoppingList: updated,
-          });
-        } catch (error) {
-          const friendlyError = handleFirebaseError(error, 'updateShoppingList', { userId: user.uid });
-          setSyncError(friendlyError);
-          console.warn('Failed to sync shopping list', friendlyError);
-        }
-      }
-    },
-    [shoppingList, user?.uid]
-  );
-
-  const removeShoppingItems = useCallback(
-    async (ids: string[]) => {
-      const updated = shoppingList.filter((item) => !ids.includes(item.id));
-      setShoppingList(updated);
-
-      if (user?.uid) {
-        try {
-          await syncPartialHealthData(user.uid, {
-            shoppingList: updated,
-          });
-        } catch (error) {
-          const friendlyError = handleFirebaseError(error, 'removeShoppingItems', { userId: user.uid });
-          setSyncError(friendlyError);
-          console.warn('Failed to sync shopping list', friendlyError);
-        }
-      }
-    },
-    [shoppingList, user?.uid]
-  );
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
 
@@ -665,7 +590,6 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
       exerciseLogs,
       mealLogs,
       reflections,
-      shoppingList,
       reflectionSummary,
       coachPlaybook,
       isLoading: healthDataQuery.isLoading,
@@ -688,10 +612,6 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
       addExerciseLog,
       addMealLog,
       addReflection,
-      toggleShoppingItem,
-      addToShoppingList,
-      updateShoppingList,
-      removeShoppingItems,
     }),
     [
       userProfile,
@@ -708,7 +628,6 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
       exerciseLogs,
       mealLogs,
       reflections,
-      shoppingList,
       reflectionSummary,
       coachPlaybook,
       healthDataQuery.isLoading,
@@ -732,10 +651,6 @@ export const [HealthProvider, useHealth] = createContextHook(() => {
       addMealLog,
       logWaterIntake,
       addReflection,
-      toggleShoppingItem,
-      addToShoppingList,
-      updateShoppingList,
-      removeShoppingItems,
     ]
   );
 });
