@@ -1,4 +1,4 @@
-import { Footprints, Droplet, Moon, Dumbbell, Heart, Plus, Minus } from "lucide-react-native";
+import { Footprints, Droplet, Moon, Dumbbell, Heart, Plus, Minus, Camera } from "lucide-react-native";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const { healthMetrics, updateMetrics } = useHealth();
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [snapModalVisible, setSnapModalVisible] = useState<boolean>(false);
   const [selectedMetric, setSelectedMetric] = useState<MetricType | null>(null);
   const [inputValue, setInputValue] = useState<string>("");
 
@@ -115,6 +116,14 @@ export default function TrackScreen() {
                   <Text style={styles.metricGoal}>/ {getMetricGoal(metric)}</Text>
                 </View>
               </View>
+              {metric === "calories" && (
+                <TouchableOpacity
+                   style={styles.cameraButton}
+                   onPress={() => setSnapModalVisible(true)}
+                >
+                    <Camera size={20} color="#FFF" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.progressBarContainer}>
@@ -171,6 +180,11 @@ export default function TrackScreen() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      <SnapFoodModal
+        visible={snapModalVisible}
+        onClose={() => setSnapModalVisible(false)}
+      />
 
       <Modal
         visible={modalVisible}
@@ -276,6 +290,15 @@ const styles = StyleSheet.create({
     justifyContent: "center" as const,
     alignItems: "center" as const,
     marginRight: 12,
+  },
+  cameraButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 12,
   },
   metricInfo: {
     flex: 1,
