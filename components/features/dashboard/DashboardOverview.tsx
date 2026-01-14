@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import colors from "@/constants/colors";
 import { useDashboardKPIs } from "@/hooks/useDashboardKPIs";
 import { useHealth } from "@/contexts/HealthContext";
+import { useFocusStore } from "@/stores/focusStore";
 import DashboardKPICard from "./DashboardKPICard";
 import { RecalibrationAlertCard } from "./RecalibrationAlertCard";
 import PremiumInsightsCard from "../premium/PremiumInsights";
@@ -71,7 +72,16 @@ function CircularProgress({ value, size, strokeWidth, color, label }: CircularPr
 export default function DashboardOverview() {
   const kpis = useDashboardKPIs();
   const health = useHealth();
+  const focusStore = useFocusStore();
   const [activeView, setActiveView] = useState<DashboardView>("health");
+
+  const todayFocusMinutes = useMemo(() => {
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      return Math.floor(focusStore.history
+          .filter(session => session.endTime > startOfDay.getTime())
+          .reduce((acc, session) => acc + session.duration, 0) / 60);
+  }, [focusStore.history]);
 
   const trendsData = useMemo(() => {
     // Use healthHistory for trends to ensure we capture the daily aggregate state
@@ -216,6 +226,20 @@ export default function DashboardOverview() {
         size="medium"
         style={styles.gridItem}
         testID="kpi-checkins"
+      />
+      <DashboardKPICard
+        kpi={{
+            id: 'focus-time',
+            label: "Temps de Focus",
+            value: todayFocusMinutes,
+            unit: 'min',
+            trend: 0,
+            trendDirection: 'neutral',
+            icon: '🧠'
+        }}
+        size="medium"
+        style={styles.gridItem}
+        testID="kpi-focus"
       />
     </View>
   );

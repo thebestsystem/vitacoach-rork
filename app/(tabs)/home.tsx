@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { MessageCircle, Sparkles, TrendingUp, Target, Activity, Heart, Zap, Video, ChevronRight } from "lucide-react-native";
+import { MessageCircle, Sparkles, TrendingUp, Target, Activity, Heart, Zap, Video, ChevronRight, Brain } from "lucide-react-native";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +14,7 @@ const COACH_AVATAR = "https://images.unsplash.com/photo-1573496359142-b8d87734a5
 const QUICK_ACTIONS = [
   { id: 'workout', label: 'Entraînement', icon: Activity, color: colors.primary },
   { id: 'nutrition', label: 'Nutrition', icon: Heart, color: colors.accent },
+  { id: 'focus', label: 'Mode Focus', icon: Brain, color: '#6366f1' },
   { id: 'wellness', label: 'Bien-être', icon: Sparkles, color: colors.secondary },
 ];
 
@@ -138,6 +139,7 @@ export default function HomeScreen() {
                   onPress={() => {
                     selectionFeedback();
                     if (action.id === 'workout') router.push('/workout-live' as any);
+                    if (action.id === 'focus') router.push('/focus' as any);
                   }}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>

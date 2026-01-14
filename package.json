@@ -56,7 +56,7 @@
     "text-encoding-polyfill": "^0.6.7",
     "web-streams-polyfill": "^4.2.0",
     "zod": "^4.1.12",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
