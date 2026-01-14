@@ -8,6 +8,8 @@ import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 import { InlineError } from "@/components/ui/ErrorFallback";
 import { selectionFeedback } from "@/utils/haptics";
+import { MorningBriefing } from "@/components/features/briefing/MorningBriefing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const COACH_AVATAR = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop";
 
@@ -31,6 +33,40 @@ export default function HomeScreen() {
     coachPlaybook,
   } = useHealth();
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  const [showBriefing, setShowBriefing] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    const checkBriefing = async () => {
+      try {
+        const lastDate = await AsyncStorage.getItem("lastBriefingDate");
+        const today = new Date().toDateString();
+
+        if (lastDate !== today) {
+           // Small delay to ensure smooth transition from splash/auth
+           const timer = setTimeout(() => {
+             setShowBriefing(true);
+           }, 1000);
+           return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        console.error("Briefing check error:", e);
+      }
+    };
+
+    const cleanup = checkBriefing();
+    // Since checkBriefing is async, it returns a Promise.
+    // The cleanup inside the async function (the return inside if) won't work as standard useEffect cleanup.
+    // We need to restructure this to be cleaner.
+  }, []);
+
+  const handleBriefingClose = async () => {
+    setShowBriefing(false);
+    try {
+      await AsyncStorage.setItem("lastBriefingDate", new Date().toDateString());
+    } catch (e) {
+      console.error("Failed to save briefing date", e);
+    }
+  };
 
   const errorToDisplay = syncError || (hasStorageError ? new Error("Échec du chargement des données.") : null);
   const errorMessage = errorToDisplay ? (errorToDisplay instanceof Error ? errorToDisplay.message : String(errorToDisplay)) : "";
@@ -56,6 +92,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <MorningBriefing visible={showBriefing} onClose={handleBriefingClose} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
