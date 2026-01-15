@@ -1,4 +1,4 @@
-import { Trophy, Users, Calendar, TrendingUp, Plus, ChevronRight, Medal, Flame, Droplet, Footprints, Moon, X, Target } from "lucide-react-native";
+import { Trophy, Users, Calendar, TrendingUp, Plus, ChevronRight, Medal, Flame, Droplet, Footprints, Moon, X, Target, Share2 } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { lightImpact, selectionFeedback, successFeedback, errorFeedback } from "@/utils/haptics";
 import type { Challenge, LeaderboardEntry } from "@/types/health";
 import { useChallengeStore } from "@/stores/challengeStore";
+import { AchievementCard } from "@/components/features/sharing/AchievementCard";
+import { useSocialShare } from "@/hooks/useSocialShare";
 
 // Removed MOCK_LEADERBOARD in favor of store.leaderboard
 
@@ -21,6 +23,7 @@ export default function ChallengesScreen() {
   const { healthMetrics, exerciseLogs } = useHealth();
   const { totalPoints, unlockedAchievements } = useGamification();
   const { challenges, leaderboard, fetchChallenges, createChallenge, joinChallenge, fetchLeaderboard, isLoading } = useChallengeStore();
+  const { shareView, viewRef, isSharing } = useSocialShare();
   
   const [selectedTab, setSelectedTab] = useState<"active" | "leaderboard">("active");
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -385,15 +388,28 @@ export default function ChallengesScreen() {
                 <>
                   <View style={styles.modalHeader}>
                     <Text style={styles.modalEmoji}>{selectedChallenge.icon}</Text>
-                    <TouchableOpacity
-                      style={styles.modalCloseButton}
-                      onPress={() => {
-                        lightImpact();
-                        setShowChallengeDetail(false);
-                      }}
-                    >
-                      <X size={24} color={colors.text} strokeWidth={2} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={shareView}
+                            disabled={isSharing}
+                        >
+                            {isSharing ? (
+                                <ActivityIndicator size="small" color={colors.text} />
+                            ) : (
+                                <Share2 size={24} color={colors.text} strokeWidth={2} />
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                        style={styles.modalCloseButton}
+                        onPress={() => {
+                            lightImpact();
+                            setShowChallengeDetail(false);
+                        }}
+                        >
+                        <X size={24} color={colors.text} strokeWidth={2} />
+                        </TouchableOpacity>
+                    </View>
                   </View>
 
                   <Text style={styles.modalTitle}>{selectedChallenge.title}</Text>
@@ -541,6 +557,19 @@ export default function ChallengesScreen() {
             </View>
         </Modal>
 
+      </View>
+
+      {/* Off-screen render for sharing */}
+      <View style={{ position: 'absolute', top: -1000, left: -1000 }}>
+        <AchievementCard
+            ref={viewRef}
+            title={selectedChallenge?.title || "Vita Challenge"}
+            subtitle="I joined the challenge!"
+            stat={selectedChallenge ? `${selectedChallenge.goal} ${selectedChallenge.type}` : ""}
+            userName={user?.displayName || "Champion"}
+            type="challenge"
+            icon={selectedChallenge?.icon}
+        />
       </View>
     </>
   );
