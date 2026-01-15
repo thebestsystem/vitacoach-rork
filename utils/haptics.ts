@@ -44,3 +44,4 @@ export const notificationError = async () => {
 };
 
 export const successFeedback = notificationSuccess;
+export const errorFeedback = notificationError;
