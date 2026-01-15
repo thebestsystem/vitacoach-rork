@@ -114,7 +114,8 @@ service cloud.firestore {
     }
 
     match /gamification/{userId} {
-      allow read: if isOwner(userId) || isAdminByToken();
+      // Allow public read for leaderboard, but restricted write
+      allow read: if isAuthenticated();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId) || isAdminByToken();

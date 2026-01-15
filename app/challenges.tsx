@@ -1,125 +1,48 @@
-import { Trophy, Users, Calendar, TrendingUp, Plus, ChevronRight, Medal, Flame, Droplet, Footprints, Moon, X } from "lucide-react-native";
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { Trophy, Users, Calendar, TrendingUp, Plus, ChevronRight, Medal, Flame, Droplet, Footprints, Moon, X, Target } from "lucide-react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 import { useGamification } from "@/contexts/GamificationContext";
-import { lightImpact, selectionFeedback, successFeedback } from "@/utils/haptics";
+import { useAuth } from "@/contexts/AuthContext";
+import { lightImpact, selectionFeedback, successFeedback, errorFeedback } from "@/utils/haptics";
 import type { Challenge, LeaderboardEntry } from "@/types/health";
+import { useChallengeStore } from "@/stores/challengeStore";
 
-const MOCK_CHALLENGES: Challenge[] = [
-  {
-    id: "1",
-    title: "10K Steps Daily",
-    description: "Hit 10,000 steps every day this week",
-    type: "steps",
-    goal: 70000,
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    participants: [
-      { userId: "1", userName: "You", progress: 45000, joinedAt: new Date().toISOString(), rank: 1 },
-      { userId: "2", userName: "Sarah Chen", progress: 42000, joinedAt: new Date().toISOString(), rank: 2 },
-      { userId: "3", userName: "Mike Wilson", progress: 38500, joinedAt: new Date().toISOString(), rank: 3 },
-      { userId: "4", userName: "Emma Davis", progress: 35200, joinedAt: new Date().toISOString(), rank: 4 },
-    ],
-    createdBy: "1",
-    prize: "🏆 Champion Badge",
-    icon: "👟",
-  },
-  {
-    id: "2",
-    title: "Hydration Challenge",
-    description: "Drink 2L of water daily for 5 days",
-    type: "water",
-    goal: 10,
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    participants: [
-      { userId: "1", userName: "You", progress: 6.5, joinedAt: new Date().toISOString(), rank: 2 },
-      { userId: "5", userName: "Lisa Park", progress: 7.2, joinedAt: new Date().toISOString(), rank: 1 },
-      { userId: "6", userName: "John Smith", progress: 5.8, joinedAt: new Date().toISOString(), rank: 3 },
-    ],
-    createdBy: "5",
-    prize: "💧 Hydration Master",
-    icon: "💧",
-  },
-  {
-    id: "3",
-    title: "Sleep Champion",
-    description: "Get 7+ hours of sleep for 7 nights",
-    type: "sleep",
-    goal: 49,
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    participants: [
-      { userId: "1", userName: "You", progress: 28, joinedAt: new Date().toISOString(), rank: 1 },
-      { userId: "7", userName: "Alex Kim", progress: 24.5, joinedAt: new Date().toISOString(), rank: 2 },
-    ],
-    createdBy: "1",
-    icon: "🌙",
-  },
-];
-
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  {
-    userId: "2",
-    userName: "Sarah Chen",
-    score: 2450,
-    rank: 1,
-    trend: "same",
-    achievements: 15,
-    weeklyWorkouts: 6,
-  },
-  {
-    userId: "1",
-    userName: "You",
-    score: 2380,
-    rank: 2,
-    trend: "up",
-    achievements: 12,
-    weeklyWorkouts: 5,
-  },
-  {
-    userId: "5",
-    userName: "Lisa Park",
-    score: 2210,
-    rank: 3,
-    trend: "down",
-    achievements: 14,
-    weeklyWorkouts: 4,
-  },
-  {
-    userId: "3",
-    userName: "Mike Wilson",
-    score: 2050,
-    rank: 4,
-    trend: "up",
-    achievements: 11,
-    weeklyWorkouts: 4,
-  },
-  {
-    userId: "6",
-    userName: "John Smith",
-    score: 1920,
-    rank: 5,
-    trend: "same",
-    achievements: 9,
-    weeklyWorkouts: 3,
-  },
-];
+// Removed MOCK_LEADERBOARD in favor of store.leaderboard
 
 export default function ChallengesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const { healthMetrics, exerciseLogs } = useHealth();
   const { totalPoints, unlockedAchievements } = useGamification();
+  const { challenges, leaderboard, fetchChallenges, createChallenge, joinChallenge, fetchLeaderboard, isLoading } = useChallengeStore();
   
   const [selectedTab, setSelectedTab] = useState<"active" | "leaderboard">("active");
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [showChallengeDetail, setShowChallengeDetail] = useState<boolean>(false);
+
+  // Create Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newChallengeTitle, setNewChallengeTitle] = useState("");
+  const [newChallengeDescription, setNewChallengeDescription] = useState("");
+  const [newChallengeType, setNewChallengeType] = useState<Challenge['type']>("steps");
+  const [newChallengeGoal, setNewChallengeGoal] = useState("10000");
+  const [newChallengeDuration, setNewChallengeDuration] = useState("7");
+
+  useEffect(() => {
+    fetchChallenges();
+  }, []);
+
+  useEffect(() => {
+      if (selectedTab === 'leaderboard') {
+          fetchLeaderboard();
+      }
+  }, [selectedTab]);
 
   const handleChallengePress = (challenge: Challenge) => {
     selectionFeedback();
@@ -127,9 +50,95 @@ export default function ChallengesScreen() {
     setShowChallengeDetail(true);
   };
 
-  const handleJoinChallenge = () => {
-    successFeedback();
-    setShowChallengeDetail(false);
+  const handleJoinChallenge = async () => {
+    if (!selectedChallenge || !user) return;
+
+    // Check if already joined
+    const isParticipant = selectedChallenge.participants.some(p => p.userId === user.uid);
+    if (isParticipant) {
+        Alert.alert("Already Joined", "You are already participating in this challenge!");
+        return;
+    }
+
+    try {
+        await joinChallenge(selectedChallenge.id, { uid: user.uid, displayName: user.displayName || 'You' });
+        successFeedback();
+        setShowChallengeDetail(false);
+        Alert.alert("Success", "You have joined the challenge!");
+    } catch (error) {
+        errorFeedback();
+        Alert.alert("Error", "Failed to join challenge. Please try again.");
+    }
+  };
+
+  const handleCreateChallenge = async () => {
+      if (!newChallengeTitle || !newChallengeGoal || !newChallengeDuration) {
+          errorFeedback();
+          Alert.alert("Error", "Please fill in all required fields.");
+          return;
+      }
+
+      if (!user) {
+          errorFeedback();
+          Alert.alert("Error", "You must be logged in to create a challenge.");
+          return;
+      }
+
+      const durationDays = parseInt(newChallengeDuration, 10);
+      const goalValue = parseInt(newChallengeGoal, 10);
+
+      if (isNaN(durationDays) || isNaN(goalValue)) {
+          errorFeedback();
+          Alert.alert("Error", "Goal and duration must be numbers.");
+          return;
+      }
+
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + durationDays);
+
+      const challengeData: Omit<Challenge, 'id'> = {
+          title: newChallengeTitle,
+          description: newChallengeDescription || `Reach ${goalValue} ${newChallengeType}`,
+          type: newChallengeType,
+          goal: goalValue,
+          startDate: new Date().toISOString(),
+          endDate: endDate.toISOString(),
+          participants: [{
+              userId: user.uid,
+              userName: user.displayName || 'You',
+              progress: 0,
+              joinedAt: new Date().toISOString(),
+              rank: 1
+          }],
+          createdBy: user.uid,
+          icon: getEmojiForType(newChallengeType),
+          prize: "🏆 Badge",
+      };
+
+      try {
+          await createChallenge(challengeData);
+          successFeedback();
+          setShowCreateModal(false);
+          // Reset form
+          setNewChallengeTitle("");
+          setNewChallengeDescription("");
+          setNewChallengeGoal("10000");
+          setNewChallengeDuration("7");
+      } catch (error) {
+          errorFeedback();
+          Alert.alert("Error", "Failed to create challenge.");
+      }
+  };
+
+  const getEmojiForType = (type: Challenge["type"]) => {
+      switch(type) {
+          case 'steps': return '👟';
+          case 'water': return '💧';
+          case 'sleep': return '🌙';
+          case 'workouts': return '💪';
+          case 'calories': return '🔥';
+          default: return '🏆';
+      }
   };
 
   const getChallengeIcon = (type: Challenge["type"]) => {
@@ -170,6 +179,7 @@ export default function ChallengesScreen() {
             style={styles.addButton}
             onPress={() => {
               lightImpact();
+              setShowCreateModal(true);
             }}
           >
             <Plus size={24} color={colors.surface} strokeWidth={2.5} />
@@ -206,67 +216,81 @@ export default function ChallengesScreen() {
 
         {selectedTab === "active" && (
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.challengesList}>
-              {MOCK_CHALLENGES.map((challenge) => {
-                const userParticipant = challenge.participants.find(p => p.userId === "1");
-                const progressPercent = userParticipant ? (userParticipant.progress / challenge.goal) * 100 : 0;
-                const daysLeft = Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            {isLoading && challenges.length === 0 ? (
+                <View style={{ padding: 20 }}>
+                    <ActivityIndicator color={colors.primary} />
+                </View>
+            ) : (
+                <View style={styles.challengesList}>
+                {challenges.map((challenge) => {
+                    const userParticipant = challenge.participants.find(p => p.userId === user?.uid);
+                    const progressPercent = userParticipant ? (userParticipant.progress / challenge.goal) * 100 : 0;
+                    const daysLeft = Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
-                return (
-                  <TouchableOpacity
-                    key={challenge.id}
-                    style={styles.challengeCard}
-                    onPress={() => handleChallengePress(challenge)}
-                  >
-                    <View style={styles.challengeHeader}>
-                      <View style={styles.challengeIconContainer}>
-                        <Text style={styles.challengeEmoji}>{challenge.icon}</Text>
-                      </View>
-                      <View style={styles.challengeInfo}>
-                        <Text style={styles.challengeTitle}>{challenge.title}</Text>
-                        <Text style={styles.challengeDescription}>{challenge.description}</Text>
-                      </View>
-                      <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
-                    </View>
-
-                    <View style={styles.challengeProgress}>
-                      <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${Math.min(progressPercent, 100)}%` }]} />
-                      </View>
-                      <Text style={styles.progressText}>
-                        {userParticipant ? Math.round(progressPercent) : 0}% complete
-                      </Text>
-                    </View>
-
-                    <View style={styles.challengeMeta}>
-                      <View style={styles.metaItem}>
-                        <Users size={14} color={colors.textSecondary} strokeWidth={2} />
-                        <Text style={styles.metaText}>{challenge.participants.length} joined</Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Calendar size={14} color={colors.textSecondary} strokeWidth={2} />
-                        <Text style={styles.metaText}>{daysLeft} days left</Text>
-                      </View>
-                      {challenge.prize && (
-                        <View style={styles.metaItem}>
-                          <Trophy size={14} color={colors.warning} strokeWidth={2} />
-                          <Text style={[styles.metaText, { color: colors.warning }]}>{challenge.prize}</Text>
+                    return (
+                    <TouchableOpacity
+                        key={challenge.id}
+                        style={styles.challengeCard}
+                        onPress={() => handleChallengePress(challenge)}
+                    >
+                        <View style={styles.challengeHeader}>
+                        <View style={styles.challengeIconContainer}>
+                            <Text style={styles.challengeEmoji}>{challenge.icon}</Text>
                         </View>
-                      )}
-                    </View>
+                        <View style={styles.challengeInfo}>
+                            <Text style={styles.challengeTitle}>{challenge.title}</Text>
+                            <Text style={styles.challengeDescription}>{challenge.description}</Text>
+                        </View>
+                        <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
+                        </View>
 
-                    {userParticipant && userParticipant.rank && (
-                      <View style={styles.rankBadge}>
-                        <Medal size={16} color={colors.surface} strokeWidth={2} />
-                        <Text style={styles.rankText}>#{userParticipant.rank}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                        <View style={styles.challengeProgress}>
+                        <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, { width: `${Math.min(progressPercent, 100)}%` }]} />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {userParticipant ? Math.round(progressPercent) : 0}% complete
+                        </Text>
+                        </View>
 
-            <TouchableOpacity style={styles.createButton} onPress={() => lightImpact()}>
+                        <View style={styles.challengeMeta}>
+                        <View style={styles.metaItem}>
+                            <Users size={14} color={colors.textSecondary} strokeWidth={2} />
+                            <Text style={styles.metaText}>{challenge.participants.length} joined</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Calendar size={14} color={colors.textSecondary} strokeWidth={2} />
+                            <Text style={styles.metaText}>{Math.max(0, daysLeft)} days left</Text>
+                        </View>
+                        {challenge.prize && (
+                            <View style={styles.metaItem}>
+                            <Trophy size={14} color={colors.warning} strokeWidth={2} />
+                            <Text style={[styles.metaText, { color: colors.warning }]}>{challenge.prize}</Text>
+                            </View>
+                        )}
+                        </View>
+
+                        {userParticipant && userParticipant.rank && (
+                        <View style={styles.rankBadge}>
+                            <Medal size={16} color={colors.surface} strokeWidth={2} />
+                            <Text style={styles.rankText}>#{userParticipant.rank}</Text>
+                        </View>
+                        )}
+                    </TouchableOpacity>
+                    );
+                })}
+                {challenges.length === 0 && (
+                    <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>
+                        No active challenges. Create one!
+                    </Text>
+                )}
+                </View>
+            )}
+
+            <TouchableOpacity style={styles.createButton} onPress={() => {
+                lightImpact();
+                setShowCreateModal(true);
+            }}>
               <LinearGradient
                 colors={[colors.gradient2[0], colors.gradient2[1]] as readonly [string, string, ...string[]]}
                 style={styles.createButtonGradient}
@@ -290,7 +314,7 @@ export default function ChallengesScreen() {
                   <Text style={styles.statLabel}>Points</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>#{MOCK_LEADERBOARD.find(e => e.userId === "1")?.rank || "-"}</Text>
+                  <Text style={styles.statValue}>#{leaderboard.find(e => e.userId === user?.uid)?.rank || "-"}</Text>
                   <Text style={styles.statLabel}>Rank</Text>
                 </View>
                 <View style={styles.statItem}>
@@ -306,8 +330,11 @@ export default function ChallengesScreen() {
 
             <View style={styles.leaderboardList}>
               <Text style={styles.sectionTitle}>Global Leaderboard</Text>
-              {MOCK_LEADERBOARD.map((entry, index) => {
-                const isUser = entry.userId === "1";
+              {leaderboard.length === 0 && !isLoading && (
+                   <Text style={{ textAlign: 'center', color: colors.textSecondary }}>No data yet.</Text>
+              )}
+              {leaderboard.map((entry, index) => {
+                const isUser = entry.userId === user?.uid;
                 const medalColor = index === 0 ? "#FFD700" : index === 1 ? "#C0C0C0" : index === 2 ? "#CD7F32" : colors.textTertiary;
 
                 return (
@@ -350,6 +377,7 @@ export default function ChallengesScreen() {
           </ScrollView>
         )}
 
+        {/* Challenge Detail Modal */}
         <Modal visible={showChallengeDetail} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -409,14 +437,110 @@ export default function ChallengesScreen() {
                     })}
                   </View>
 
-                  <TouchableOpacity style={styles.joinButton} onPress={handleJoinChallenge}>
-                    <Text style={styles.joinButtonText}>Join Challenge</Text>
-                  </TouchableOpacity>
+                  {!selectedChallenge.participants.some(p => p.userId === user?.uid) && (
+                    <TouchableOpacity style={styles.joinButton} onPress={handleJoinChallenge}>
+                        {isLoading ? (
+                             <ActivityIndicator color={colors.surface} />
+                        ) : (
+                            <Text style={styles.joinButtonText}>Join Challenge</Text>
+                        )}
+                    </TouchableOpacity>
+                  )}
+                  {selectedChallenge.participants.some(p => p.userId === user?.uid) && (
+                      <View style={[styles.joinButton, { backgroundColor: colors.success }]}>
+                           <Text style={styles.joinButtonText}>Joined ✓</Text>
+                      </View>
+                  )}
                 </>
               )}
             </View>
           </View>
         </Modal>
+
+        {/* Create Challenge Modal */}
+        <Modal visible={showCreateModal} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Create Challenge</Text>
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={() => {
+                                lightImpact();
+                                setShowCreateModal(false);
+                            }}
+                        >
+                            <X size={24} color={colors.text} strokeWidth={2} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={{ maxHeight: 400 }}>
+                        <Text style={styles.label}>Title</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. 30 Day Walking Challenge"
+                            placeholderTextColor={colors.textTertiary}
+                            value={newChallengeTitle}
+                            onChangeText={setNewChallengeTitle}
+                        />
+
+                        <Text style={styles.label}>Type</Text>
+                        <View style={styles.typeSelector}>
+                            {(['steps', 'water', 'sleep', 'workouts', 'calories'] as const).map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[styles.typeButton, newChallengeType === type && styles.typeButtonActive]}
+                                    onPress={() => setNewChallengeType(type)}
+                                >
+                                    <Text style={[styles.typeButtonText, newChallengeType === type && styles.typeButtonTextActive]}>
+                                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={styles.label}>Goal Target</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. 10000"
+                            keyboardType="numeric"
+                            placeholderTextColor={colors.textTertiary}
+                            value={newChallengeGoal}
+                            onChangeText={setNewChallengeGoal}
+                        />
+
+                        <Text style={styles.label}>Duration (Days)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. 7"
+                            keyboardType="numeric"
+                            placeholderTextColor={colors.textTertiary}
+                            value={newChallengeDuration}
+                            onChangeText={setNewChallengeDuration}
+                        />
+
+                         <Text style={styles.label}>Description (Optional)</Text>
+                        <TextInput
+                            style={[styles.input, { height: 80 }]}
+                            placeholder="Describe your challenge..."
+                            multiline
+                            placeholderTextColor={colors.textTertiary}
+                            value={newChallengeDescription}
+                            onChangeText={setNewChallengeDescription}
+                        />
+                    </ScrollView>
+
+                    <TouchableOpacity style={styles.joinButton} onPress={handleCreateChallenge}>
+                        {isLoading ? (
+                             <ActivityIndicator color={colors.surface} />
+                        ) : (
+                            <Text style={styles.joinButtonText}>Create Challenge</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
       </View>
     </>
   );
@@ -878,10 +1002,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    marginTop: 20
   },
   joinButtonText: {
     fontSize: 17,
     fontWeight: "700" as const,
     color: colors.surface,
   },
+  label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+      marginTop: 12
+  },
+  input: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 12,
+      color: colors.text,
+      fontSize: 16
+  },
+  typeSelector: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8
+  },
+  typeButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border
+  },
+  typeButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary
+  },
+  typeButtonText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '500'
+  },
+  typeButtonTextActive: {
+      color: colors.surface
+  }
 });
