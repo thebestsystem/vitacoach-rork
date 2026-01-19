@@ -28,6 +28,11 @@ export async function POST(req: Request) {
           Your goal is to provide strategic clarity, emotional intelligence feedback, and actionable advice.
           Be direct, encouraging, but rigorous.
           Context about user: ${JSON.stringify(context || {})}
+
+          If 'goals' are provided in the context, explicitly evaluate how this journal entry relates to them.
+          If the entry indicates progress towards a goal, mention it.
+          If the entry indicates a distraction from a goal, warn the user.
+
           Language: French (Français).
           `
         },

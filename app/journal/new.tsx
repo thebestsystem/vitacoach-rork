@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Sparkles, Send } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { useJournalStore } from '@/stores/journalStore';
+import { useGoalStore } from '@/stores/goalStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBaseUrl } from '@/utils/baseUrl';
 
@@ -19,6 +20,7 @@ export default function NewJournalEntryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { addEntry } = useJournalStore();
+  const { goals } = useGoalStore();
   const [content, setContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState(PROMPTS[0]);
@@ -28,6 +30,13 @@ export default function NewJournalEntryScreen() {
 
     setIsAnalyzing(true);
     try {
+      // Prepare context with active goals
+      const activeGoals = goals.filter(g => g.status === 'active').map(g => ({
+        title: g.title,
+        description: g.description,
+        deadline: g.deadline
+      }));
+
       // Optimistic save first, analysis later? No, let's wait for analysis to be impressive.
       // But if it fails, we still save content.
 
@@ -37,7 +46,10 @@ export default function NewJournalEntryScreen() {
         const response = await fetch(`${getBaseUrl()}/api/analyze-journal`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({
+              content,
+              context: { goals: activeGoals }
+            }),
         });
 
         if (response.ok) {

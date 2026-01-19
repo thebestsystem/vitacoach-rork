@@ -1,15 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus, ChevronLeft, Calendar, Brain, ArrowUpRight } from 'lucide-react-native';
+import { Plus, ChevronLeft, Calendar, Brain, ArrowUpRight, Target, ChevronRight } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { useJournalStore } from '@/stores/journalStore';
+import { useGoalStore } from '@/stores/goalStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JournalListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { entries } = useJournalStore();
+  const { goals } = useGoalStore();
+
+  const activeGoalsCount = goals.filter(g => g.status === 'active').length;
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -38,6 +42,25 @@ export default function JournalListScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+
+        <TouchableOpacity
+            style={styles.goalsBanner}
+            onPress={() => router.push('/journal/goals')}
+        >
+            <View style={styles.goalsContent}>
+                <View style={styles.goalsIcon}>
+                    <Target size={24} color={colors.primary} />
+                </View>
+                <View>
+                    <Text style={styles.goalsTitle}>Objectifs Stratégiques</Text>
+                    <Text style={styles.goalsSubtitle}>
+                        {activeGoalsCount} objectifs actifs • North Star
+                    </Text>
+                </View>
+            </View>
+            <ChevronRight size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+
         {entries.length === 0 ? (
             <View style={styles.emptyState}>
                 <Brain size={64} color={colors.primary} style={{ opacity: 0.5 }} />
@@ -132,10 +155,48 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
   },
+  goalsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  goalsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  goalsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  goalsSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 100,
+    marginTop: 60,
     gap: 16,
   },
   emptyTitle: {
