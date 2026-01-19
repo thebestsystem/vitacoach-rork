@@ -9,6 +9,8 @@ import { useHealth } from "@/contexts/HealthContext";
 import { InlineError } from "@/components/ui/ErrorFallback";
 import { selectionFeedback } from "@/utils/haptics";
 import { MorningBriefing } from "@/components/features/briefing/MorningBriefing";
+import { WeeklyReviewModal } from "@/components/features/review/WeeklyReviewModal";
+import { useReviewStore } from "@/stores/reviewStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const COACH_AVATAR = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop";
@@ -18,6 +20,7 @@ const QUICK_ACTIONS = [
   { id: 'nutrition', label: 'Nutrition', icon: Heart, color: colors.accent },
   { id: 'focus', label: 'Mode Focus', icon: Brain, color: '#6366f1' },
   { id: 'journal', label: 'Journal', icon: BookOpen, color: '#F59E0B' },
+  { id: 'review', label: 'Bilan Hebdo', icon: Target, color: '#10B981' }, // Added Review
   { id: 'wellness', label: 'Bien-être', icon: Sparkles, color: colors.secondary },
 ];
 
@@ -35,15 +38,25 @@ export default function HomeScreen() {
   } = useHealth();
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [showBriefing, setShowBriefing] = useState<boolean>(false);
+  const [showWeeklyReview, setShowWeeklyReview] = useState<boolean>(false);
+  const { hasReviewForCurrentWeek } = useReviewStore();
 
   React.useEffect(() => {
-    const checkBriefing = async () => {
+    const checkBriefingAndReview = async () => {
       try {
         const lastDate = await AsyncStorage.getItem("lastBriefingDate");
         const today = new Date().toDateString();
+        const currentDay = new Date().getDay(); // 0 is Sunday
+
+        // Check for Weekly Review (Sunday)
+        if (currentDay === 0) {
+            const hasReview = await hasReviewForCurrentWeek(userProfile?.uid || 'anonymous');
+            if (!hasReview) {
+                setShowWeeklyReview(true);
+            }
+        }
 
         if (lastDate !== today) {
-           // Small delay to ensure smooth transition from splash/auth
            const timer = setTimeout(() => {
              setShowBriefing(true);
            }, 1000);
@@ -54,11 +67,8 @@ export default function HomeScreen() {
       }
     };
 
-    const cleanup = checkBriefing();
-    // Since checkBriefing is async, it returns a Promise.
-    // The cleanup inside the async function (the return inside if) won't work as standard useEffect cleanup.
-    // We need to restructure this to be cleaner.
-  }, []);
+    checkBriefingAndReview();
+  }, [userProfile]);
 
   const handleBriefingClose = async () => {
     setShowBriefing(false);
@@ -94,6 +104,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <MorningBriefing visible={showBriefing} onClose={handleBriefingClose} />
+      <WeeklyReviewModal visible={showWeeklyReview} onClose={() => setShowWeeklyReview(false)} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -179,6 +190,7 @@ export default function HomeScreen() {
                     if (action.id === 'workout') router.push('/workout-live' as any);
                     if (action.id === 'focus') router.push('/focus' as any);
                     if (action.id === 'journal') router.push('/journal' as any);
+                    if (action.id === 'review') setShowWeeklyReview(true);
                   }}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>

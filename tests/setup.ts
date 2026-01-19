@@ -1,11 +1,16 @@
 // Mock react-native
 import { mock } from "bun:test";
 
+// Global mocks
+global.__DEV__ = true;
+
 mock.module("react-native", () => ({
   View: () => null,
   Text: () => null,
+  Image: () => null,
   StyleSheet: {
     create: (obj) => obj,
+    absoluteFillObject: {},
   },
   Platform: {
     OS: "ios",
@@ -19,6 +24,10 @@ mock.module("react-native", () => ({
   Alert: {
     alert: mock(),
   },
+  Modal: () => null,
+  AppState: {
+    addEventListener: mock(() => ({ remove: mock() })),
+  },
 }));
 
 mock.module("expo-router", () => ({
@@ -29,6 +38,10 @@ mock.module("expo-router", () => ({
   Stack: {
     Screen: () => null,
   },
+}));
+
+mock.module("expo-blur", () => ({
+  BlurView: () => null,
 }));
 
 mock.module("@/config/firebase", () => ({
@@ -43,7 +56,7 @@ mock.module("firebase/firestore", () => ({
     updateDoc: mock(() => Promise.resolve()),
     query: mock(() => ({})),
     where: mock(() => ({})),
-    getDocs: mock(() => Promise.resolve({ docs: [] })),
+    getDocs: mock(() => Promise.resolve({ docs: [], empty: true })),
     addDoc: mock(() => Promise.resolve({ id: 'new-id' })),
     orderBy: mock(() => ({})),
     limit: mock(() => ({})),
@@ -61,6 +74,7 @@ mock.module("@react-native-async-storage/async-storage", () => ({
 // Mock react-native-safe-area-context
 mock.module("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  SafeAreaView: ({ children }) => children,
 }));
 
 // Mock lucide-react-native
@@ -78,4 +92,20 @@ mock.module("lucide-react-native", () => ({
   ChevronRight: () => null,
   Sparkles: () => null,
   Send: () => null,
+  X: () => null,
+  Check: () => null,
+  Star: () => null,
+  TrendingUp: () => null,
+  Zap: () => null,
+}));
+
+mock.module("expo-linear-gradient", () => ({
+  LinearGradient: () => null,
+}));
+
+mock.module("expo-haptics", () => ({
+  selectionAsync: mock(),
+  notificationAsync: mock(),
+  impactAsync: mock(),
+  NotificationFeedbackType: { Success: 'success' },
 }));
