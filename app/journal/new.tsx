@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, Send } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, Send, Mic, Square } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { useJournalStore } from '@/stores/journalStore';
 import { useGoalStore } from '@/stores/goalStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBaseUrl } from '@/utils/baseUrl';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import * as Haptics from 'expo-haptics';
 
 const PROMPTS = [
   "Quelle a été votre plus grande victoire aujourd'hui ?",
@@ -23,7 +25,55 @@ export default function NewJournalEntryScreen() {
   const { goals } = useGoalStore();
   const [content, setContent] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState(PROMPTS[0]);
+
+  const { isRecording, startRecording, stopRecording, durationMillis } = useVoiceRecorder();
+
+  const handleToggleRecording = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (isRecording) {
+      const uri = await stopRecording();
+      if (uri) {
+        handleTranscribe(uri);
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
+  const handleTranscribe = async (uri: string) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        type: 'audio/m4a',
+        name: 'recording.m4a',
+      } as any);
+
+      const response = await fetch(`${getBaseUrl()}/api/transcribe`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (!response.ok) throw new Error('Transcription failed');
+
+      const data = await response.json();
+      if (data.text) {
+        setContent(prev => (prev ? prev + '\n\n' + data.text : data.text));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      Alert.alert('Erreur', "La transcription a échoué. Vérifiez votre connexion.");
+      console.error(error);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!content.trim()) return;
@@ -36,9 +86,6 @@ export default function NewJournalEntryScreen() {
         description: g.description,
         deadline: g.deadline
       }));
-
-      // Optimistic save first, analysis later? No, let's wait for analysis to be impressive.
-      // But if it fails, we still save content.
 
       let analysisResult = null;
 
@@ -57,7 +104,6 @@ export default function NewJournalEntryScreen() {
         }
       } catch (e) {
         console.error("Analysis failed", e);
-        // Silently fail analysis, just save text
       }
 
       addEntry({
@@ -81,6 +127,13 @@ export default function NewJournalEntryScreen() {
     }
   };
 
+  const formatDuration = (millis: number) => {
+    const seconds = Math.floor(millis / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -92,11 +145,11 @@ export default function NewJournalEntryScreen() {
         <Text style={styles.title}>Nouvelle Réflexion</Text>
         <TouchableOpacity
             onPress={handleSave}
-            disabled={!content.trim() || isAnalyzing}
-            style={[styles.saveButton, (!content.trim() || isAnalyzing) && styles.saveButtonDisabled]}
+            disabled={!content.trim() || isAnalyzing || isRecording}
+            style={[styles.saveButton, (!content.trim() || isAnalyzing || isRecording) && styles.saveButtonDisabled]}
         >
             {isAnalyzing ? (
-                <Text style={styles.saveButtonText}>Analyse...</Text>
+                <ActivityIndicator color={colors.surface} size="small" />
             ) : (
                 <Text style={styles.saveButtonText}>Enregistrer</Text>
             )}
@@ -132,13 +185,36 @@ export default function NewJournalEntryScreen() {
                 <TextInput
                     style={styles.input}
                     multiline
-                    placeholder="Commencez à écrire..."
+                    placeholder={isTranscribing ? "Transcription en cours..." : "Commencez à écrire ou dictez..."}
                     placeholderTextColor={colors.textTertiary}
                     value={content}
                     onChangeText={setContent}
-                    autoFocus
                     textAlignVertical="top"
+                    editable={!isTranscribing}
                 />
+
+                <View style={styles.toolbar}>
+                    <TouchableOpacity
+                        style={[styles.micButton, isRecording && styles.micButtonRecording]}
+                        onPress={handleToggleRecording}
+                        disabled={isTranscribing}
+                    >
+                        {isRecording ? (
+                            <Square size={24} color={colors.surface} fill={colors.surface} />
+                        ) : (
+                            <Mic size={24} color={isTranscribing ? colors.textTertiary : colors.surface} />
+                        )}
+                    </TouchableOpacity>
+                    {isRecording && (
+                        <Text style={styles.recordingTimer}>{formatDuration(durationMillis)}</Text>
+                    )}
+                    {isTranscribing && (
+                        <View style={styles.transcribingContainer}>
+                             <ActivityIndicator size="small" color={colors.primary} />
+                             <Text style={styles.transcribingText}>Transcription IA...</Text>
+                        </View>
+                    )}
+                </View>
             </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -178,6 +254,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    minWidth: 100,
+    alignItems: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.5,
@@ -243,4 +321,43 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     flex: 1,
   },
+  toolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginTop: 20,
+      gap: 12,
+  },
+  micButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+  },
+  micButtonRecording: {
+      backgroundColor: colors.error,
+      shadowColor: colors.error,
+  },
+  recordingTimer: {
+      fontSize: 16,
+      fontVariant: ['tabular-nums'],
+      color: colors.error,
+      fontWeight: '600',
+  },
+  transcribingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+  },
+  transcribingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+  }
 });
