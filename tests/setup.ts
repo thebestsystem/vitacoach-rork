@@ -4,6 +4,17 @@ import { mock } from "bun:test";
 // Global mocks
 global.__DEV__ = true;
 
+if (typeof window === 'undefined') {
+    global.window = {};
+}
+if (!global.window.localStorage) {
+    global.window.localStorage = {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+    };
+}
+
 mock.module("react-native", () => ({
   View: () => null,
   Text: () => null,

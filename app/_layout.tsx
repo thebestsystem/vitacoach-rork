@@ -11,12 +11,15 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { AccountabilityProvider } from "@/contexts/AccountabilityContext";
 import { GlobalErrorBoundary } from "@/components/ui/GlobalErrorBoundary";
+import { useHealthSync } from "@/hooks/useHealthSync";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  useHealthSync();
+
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
