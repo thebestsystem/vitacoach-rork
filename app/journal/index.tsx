@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function JournalListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { entries } = useJournalStore();
+  const { entries, _hasHydrated } = useJournalStore();
   const { goals } = useGoalStore();
 
   const activeGoalsCount = goals.filter(g => g.status === 'active').length;
@@ -42,27 +42,32 @@ export default function JournalListScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-
-        <TouchableOpacity
-            style={styles.goalsBanner}
-            onPress={() => router.push('/journal/goals')}
-        >
-            <View style={styles.goalsContent}>
+        {!_hasHydrated ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.goalsBanner}
+              onPress={() => router.push('/journal/goals')}
+            >
+              <View style={styles.goalsContent}>
                 <View style={styles.goalsIcon}>
-                    <Target size={24} color={colors.primary} />
+                  <Target size={24} color={colors.primary} />
                 </View>
                 <View>
-                    <Text style={styles.goalsTitle}>Objectifs Stratégiques</Text>
-                    <Text style={styles.goalsSubtitle}>
-                        {activeGoalsCount} objectifs actifs • North Star
-                    </Text>
+                  <Text style={styles.goalsTitle}>Objectifs Stratégiques</Text>
+                  <Text style={styles.goalsSubtitle}>
+                    {activeGoalsCount} objectifs actifs • North Star
+                  </Text>
                 </View>
-            </View>
-            <ChevronRight size={20} color={colors.textTertiary} />
-        </TouchableOpacity>
+              </View>
+              <ChevronRight size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-        {entries.length === 0 ? (
-            <View style={styles.emptyState}>
+            {entries.length === 0 ? (
+              <View style={styles.emptyState}>
                 <Brain size={64} color={colors.primary} style={{ opacity: 0.5 }} />
                 <Text style={styles.emptyTitle}>Votre espace de réflexion</Text>
                 <Text style={styles.emptyText}>Capturez vos pensées, victoires et défis. L'IA analysera vos entrées pour vous coacher.</Text>
@@ -72,45 +77,47 @@ export default function JournalListScreen() {
                 >
                     <Text style={styles.createButtonText}>Première Entrée</Text>
                 </TouchableOpacity>
-            </View>
-        ) : (
-            <View style={styles.entriesList}>
+              </View>
+            ) : (
+              <View style={styles.entriesList}>
                 {entries.map((entry) => (
-                    <TouchableOpacity
-                        key={entry.id}
-                        style={styles.entryCard}
-                        onPress={() => router.push(`/journal/${entry.id}` as any)}
-                    >
-                        <View style={styles.entryHeader}>
-                            <View style={styles.dateContainer}>
-                                <Calendar size={14} color={colors.textSecondary} />
-                                <Text style={styles.dateText}>{formatDate(entry.date)}</Text>
-                            </View>
-                            {entry.sentiment && (
-                                <View style={[styles.sentimentDot, { backgroundColor: getSentimentColor(entry.sentiment) }]} />
-                            )}
-                        </View>
-                        <Text style={styles.entryPreview} numberOfLines={2}>{entry.content}</Text>
+                  <TouchableOpacity
+                    key={entry.id}
+                    style={styles.entryCard}
+                    onPress={() => router.push(`/journal/${entry.id}` as any)}
+                  >
+                    <View style={styles.entryHeader}>
+                      <View style={styles.dateContainer}>
+                        <Calendar size={14} color={colors.textSecondary} />
+                        <Text style={styles.dateText}>{formatDate(entry.date)}</Text>
+                      </View>
+                      {entry.sentiment && (
+                        <View style={[styles.sentimentDot, { backgroundColor: getSentimentColor(entry.sentiment) }]} />
+                      )}
+                    </View>
+                    <Text style={styles.entryPreview} numberOfLines={2}>{entry.content}</Text>
 
-                        {entry.analysis && (
-                            <View style={styles.analysisPreview}>
-                                <Brain size={14} color={colors.primary} />
-                                <Text style={styles.analysisText} numberOfLines={1}>
-                                    {entry.analysis.summary}
-                                </Text>
-                            </View>
-                        )}
+                    {entry.analysis && (
+                      <View style={styles.analysisPreview}>
+                        <Brain size={14} color={colors.primary} />
+                        <Text style={styles.analysisText} numberOfLines={1}>
+                          {entry.analysis.summary}
+                        </Text>
+                      </View>
+                    )}
 
-                        <View style={styles.tagsContainer}>
-                            {entry.tags?.slice(0, 3).map((tag, idx) => (
-                                <View key={idx} style={styles.tag}>
-                                    <Text style={styles.tagText}>#{tag}</Text>
-                                </View>
-                            ))}
+                    <View style={styles.tagsContainer}>
+                      {entry.tags?.slice(0, 3).map((tag, idx) => (
+                        <View key={idx} style={styles.tag}>
+                          <Text style={styles.tagText}>#{tag}</Text>
                         </View>
-                    </TouchableOpacity>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
                 ))}
-            </View>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 

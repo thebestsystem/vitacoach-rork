@@ -1,13 +1,22 @@
 import { Redirect, Tabs } from "expo-router";
 import { MessageCircle, TrendingUp, User, Settings } from "lucide-react-native";
 import React from "react";
+import { View, ActivityIndicator } from "react-native";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 
 export default function TabLayout() {
   const { onboardingComplete, isLoading } = useHealth();
 
-  if (!isLoading && !onboardingComplete) {
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!onboardingComplete) {
     return <Redirect href="/onboarding" />;
   }
 

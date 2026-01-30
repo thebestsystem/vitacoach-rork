@@ -415,8 +415,8 @@ export const useHealth = () => {
     momentumInsights,
     reflectionSummary,
     coachPlaybook,
-    isLoading: false, // Optimistic UI
-    isInitialized: true,
+    isLoading: !store._hasHydrated,
+    isInitialized: store._hasHydrated,
     hasStorageError: false,
     storageStatus: {},
     initializationErrors: {},

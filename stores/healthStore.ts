@@ -27,8 +27,10 @@ interface HealthState {
   exerciseLogs: ExerciseLog[];
   mealLogs: MealLog[];
   reflections: ReflectionEntry[];
+  _hasHydrated: boolean;
 
   // Base Setters (for Sync)
+  setHasHydrated: (state: boolean) => void;
   setUserProfile: (profile: UserProfile | null) => void;
   setHealthMetrics: (metrics: HealthMetrics | null) => void;
   setWorkoutPlans: (plans: WorkoutPlan[]) => void;
@@ -68,8 +70,10 @@ export const useHealthStore = create<HealthState>()(
       exerciseLogs: [],
       mealLogs: [],
       reflections: [],
+      _hasHydrated: false,
 
       // Setters
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       setUserProfile: (userProfile) => set({ userProfile }),
       setHealthMetrics: (healthMetrics) => set({ healthMetrics }),
       setWorkoutPlans: (workoutPlans) => set({ workoutPlans }),
@@ -160,6 +164,9 @@ export const useHealthStore = create<HealthState>()(
     {
       name: 'health-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
