@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus, ChevronLeft, Calendar, Brain, ArrowUpRight, Target, ChevronRight } from 'lucide-react-native';
+import { Plus, ChevronLeft, Calendar, Brain, Target, ChevronRight } from 'lucide-react-native';
 import colors from '@/constants/colors';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useJournalStore } from '@/stores/journalStore';
 import { useGoalStore } from '@/stores/goalStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,17 +68,14 @@ export default function JournalListScreen() {
             </TouchableOpacity>
 
             {entries.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Brain size={64} color={colors.primary} style={{ opacity: 0.5 }} />
-                <Text style={styles.emptyTitle}>Votre espace de réflexion</Text>
-                <Text style={styles.emptyText}>Capturez vos pensées, victoires et défis. L'IA analysera vos entrées pour vous coacher.</Text>
-                <TouchableOpacity
-                  style={styles.createButtonLarge}
-                  onPress={() => router.push('/journal/new' as any)}
-                >
-                    <Text style={styles.createButtonText}>Première Entrée</Text>
-                </TouchableOpacity>
-              </View>
+              <EmptyState
+                icon={Brain}
+                title="Votre espace de réflexion"
+                message="Capturez vos pensées, victoires et défis. L'IA analysera vos entrées pour vous coacher."
+                actionLabel="Première Entrée"
+                onAction={() => router.push('/journal/new' as any)}
+                style={{ marginTop: 60 }}
+              />
             ) : (
               <View style={styles.entriesList}>
                 {entries.map((entry) => (
@@ -199,37 +197,6 @@ const styles = StyleSheet.create({
   goalsSubtitle: {
     fontSize: 13,
     color: colors.textSecondary,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
-    gap: 16,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    maxWidth: '80%',
-  },
-  createButtonLarge: {
-    marginTop: 20,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 30,
-  },
-  createButtonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '700',
   },
   entriesList: {
     gap: 16,

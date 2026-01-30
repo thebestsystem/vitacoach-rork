@@ -88,7 +88,7 @@ const ProgressChart = memo(function ProgressChart({
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         <View style={[styles.emptyState, { height }]}>
-          <Text style={styles.emptyText}>No data available</Text>
+          <Text style={styles.emptyText}>Aucune donnée disponible</Text>
         </View>
       </View>
     );
