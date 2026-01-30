@@ -1,6 +1,6 @@
 import { Heart, Target, Activity, User, Zap, TrendingUp, Bell, Check, MessageCircle, Briefcase, Brain, Battery } from "lucide-react-native";
 import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Animated, ActivityIndicator, FlatList, Dimensions, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Animated, ActivityIndicator, FlatList, Dimensions, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import colors from "@/constants/colors";
@@ -122,7 +122,6 @@ export default function OnboardingScreen() {
     
     try {
       setIsCompleting(true);
-      console.log("Starting onboarding completion");
       
       const profileData = {
         name,
@@ -133,7 +132,6 @@ export default function OnboardingScreen() {
       };
       
       await completeOnboarding(profileData);
-      console.log("Onboarding completed successfully, waiting for sync...");
       
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -141,16 +139,14 @@ export default function OnboardingScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      console.log("Redirecting to home");
       router.replace("/(tabs)/home");
     } catch (error) {
-      console.error("Error completing onboarding:", error);
       setIsCompleting(false);
       
       if (error instanceof Error) {
-        alert(`Failed to complete onboarding: ${error.message}. Please try again.`);
+        Alert.alert("Erreur", `L'intégration a échoué: ${error.message}. Veuillez réessayer.`);
       } else {
-        alert('An unexpected error occurred. Please try again.');
+        Alert.alert("Erreur", "Une erreur inattendue est survenue. Veuillez réessayer.");
       }
     }
   };

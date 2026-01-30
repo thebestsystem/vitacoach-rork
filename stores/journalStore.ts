@@ -5,6 +5,8 @@ import { JournalEntry } from '@/types/journal';
 
 interface JournalState {
   entries: JournalEntry[];
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
   addEntry: (entry: Omit<JournalEntry, 'id' | 'date'>) => void;
   updateEntry: (id: string, updates: Partial<JournalEntry>) => void;
   deleteEntry: (id: string) => void;
@@ -15,6 +17,8 @@ export const useJournalStore = create<JournalState>()(
   persist(
     (set, get) => ({
       entries: [],
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       addEntry: (entry) => {
         const newEntry: JournalEntry = {
           ...entry,
@@ -40,6 +44,9 @@ export const useJournalStore = create<JournalState>()(
     {
       name: 'journal-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
