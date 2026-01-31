@@ -1,13 +1,16 @@
-import { TrendingUp, Award, Flame, Target, Calendar, Trophy, ChevronRight } from "lucide-react-native";
+import { TrendingUp, Award, Flame, Target, Calendar, Trophy, ChevronRight, BarChart2 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 import { useGamification } from "@/contexts/GamificationContext";
 import ProgressChart from "@/components/features/health/ProgressChart";
 import MomentumInsightsCard from "@/components/features/dashboard/MomentumInsightsCard";
+import { InlineError } from "@/components/ui/ErrorFallback";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { Achievement } from "@/types/health";
 import { selectionFeedback } from "@/utils/haptics";
 
@@ -16,7 +19,16 @@ type TimePeriod = "7d" | "30d" | "all";
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { healthHistory, exerciseLogs, momentumInsights } = useHealth();
+  const router = useRouter();
+  const {
+    healthHistory,
+    exerciseLogs,
+    momentumInsights,
+    syncError,
+    clearSyncError,
+    refreshAll
+  } = useHealth();
+
   const {
     achievements,
     streaks,
@@ -27,6 +39,7 @@ export default function ProgressScreen() {
   
   const [currentView, setCurrentView] = useState<ViewType>("overview");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("7d");
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
   const filteredHistory = useMemo(() => {
     const now = new Date();
@@ -87,6 +100,8 @@ export default function ProgressScreen() {
 
   const currentStreak = streaks.find(s => s.type === "workout");
 
+  const hasNoData = stepsData.length === 0 && waterData.length === 0 && sleepData.length === 0;
+
   const getRarityColor = (rarity: Achievement["rarity"]) => {
     switch (rarity) {
       case "legendary":
@@ -107,8 +122,8 @@ export default function ProgressScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Progress</Text>
-        <Text style={styles.headerSubtitle}>Track your wellness journey</Text>
+        <Text style={styles.headerTitle}>Progrès</Text>
+        <Text style={styles.headerSubtitle}>Suivez votre parcours bien-être</Text>
       </View>
 
       <View style={styles.viewSelector}>
@@ -122,7 +137,7 @@ export default function ProgressScreen() {
         >
           <Trophy size={18} color={currentView === "overview" ? colors.surface : colors.textSecondary} strokeWidth={2} />
           <Text style={[styles.viewText, currentView === "overview" && styles.viewTextActive]}>
-            Overview
+            Aperçu
           </Text>
         </TouchableOpacity>
 
@@ -150,10 +165,28 @@ export default function ProgressScreen() {
         >
           <Award size={18} color={currentView === "achievements" ? colors.surface : colors.textSecondary} strokeWidth={2} />
           <Text style={[styles.viewText, currentView === "achievements" && styles.viewTextActive]}>
-            Rewards
+            Récompenses
           </Text>
         </TouchableOpacity>
       </View>
+
+      {syncError && (
+        <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+          <InlineError
+            message={syncError instanceof Error ? syncError.message : String(syncError)}
+            onRetry={async () => {
+              setIsRetrying(true);
+              try {
+                await refreshAll();
+                clearSyncError();
+              } finally {
+                setIsRetrying(false);
+              }
+            }}
+            isRetrying={isRetrying}
+          />
+        </View>
+      )}
 
       {currentView === "overview" && (
         <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
@@ -168,7 +201,7 @@ export default function ProgressScreen() {
             >
               <Award size={28} color={colors.surface} strokeWidth={2} />
               <Text style={styles.statValue}>{unlockedAchievements.length}</Text>
-              <Text style={styles.statLabel}>Achievements</Text>
+              <Text style={styles.statLabel}>Succès</Text>
             </LinearGradient>
 
             <LinearGradient
@@ -179,7 +212,7 @@ export default function ProgressScreen() {
             >
               <Flame size={28} color={colors.surface} strokeWidth={2} />
               <Text style={styles.statValue}>{currentStreak?.current || 0}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
+              <Text style={styles.statLabel}>Jours Séquence</Text>
             </LinearGradient>
           </View>
 
@@ -187,19 +220,19 @@ export default function ProgressScreen() {
             <View style={styles.statCardLight}>
               <TrendingUp size={24} color={colors.primary} strokeWidth={2} />
               <Text style={[styles.statValue, { color: colors.text }]}>{totalPoints}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Points</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Points Totaux</Text>
             </View>
 
             <View style={styles.statCardLight}>
               <Calendar size={24} color={colors.secondary} strokeWidth={2} />
               <Text style={[styles.statValue, { color: colors.text }]}>{totalWorkouts}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Workouts</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Séances</Text>
             </View>
           </View>
 
           {weeklyGoals.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Weekly Goals</Text>
+              <Text style={styles.sectionTitle}>Objectifs Hebdo</Text>
               {weeklyGoals.slice(0, 3).map((goal) => (
                 <View key={goal.id} style={styles.goalCard}>
                   <View style={styles.goalHeader}>
@@ -235,7 +268,7 @@ export default function ProgressScreen() {
           >
             <View style={styles.quickLinkContent}>
               <TrendingUp size={20} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.quickLinkText}>View Detailed Stats</Text>
+              <Text style={styles.quickLinkText}>Voir les stats détaillées</Text>
             </View>
             <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
           </TouchableOpacity>
@@ -249,7 +282,7 @@ export default function ProgressScreen() {
           >
             <View style={styles.quickLinkContent}>
               <Award size={20} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.quickLinkText}>View All Achievements</Text>
+              <Text style={styles.quickLinkText}>Voir tous les succès</Text>
             </View>
             <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
           </TouchableOpacity>
@@ -270,7 +303,7 @@ export default function ProgressScreen() {
               testID="period-7d"
             >
               <Text style={[styles.periodText, timePeriod === "7d" && styles.periodTextActive]}>
-                7 Days
+                7 Jours
               </Text>
             </TouchableOpacity>
 
@@ -283,7 +316,7 @@ export default function ProgressScreen() {
               testID="period-30d"
             >
               <Text style={[styles.periodText, timePeriod === "30d" && styles.periodTextActive]}>
-                30 Days
+                30 Jours
               </Text>
             </TouchableOpacity>
 
@@ -296,31 +329,44 @@ export default function ProgressScreen() {
               testID="period-all"
             >
               <Text style={[styles.periodText, timePeriod === "all" && styles.periodTextActive]}>
-                All Time
+                Tout
               </Text>
             </TouchableOpacity>
           </View>
 
-          <ProgressChart
-            data={stepsData}
-            title="Steps"
-            unit=" steps"
-            color={colors.primary}
-          />
+          {hasNoData ? (
+             <EmptyState
+                icon={BarChart2}
+                title="Pas encore de données"
+                message="Commencez à bouger, boire de l'eau et bien dormir pour voir vos statistiques apparaître ici !"
+                actionLabel="Enregistrer une activité"
+                onAction={() => router.push('/workout-live' as any)}
+                style={{ marginTop: 20 }}
+             />
+          ) : (
+            <>
+              <ProgressChart
+                data={stepsData}
+                title="Pas"
+                unit=" pas"
+                color={colors.primary}
+              />
 
-          <ProgressChart
-            data={waterData}
-            title="Water Intake"
-            unit="L"
-            color={colors.secondary}
-          />
+              <ProgressChart
+                data={waterData}
+                title="Hydratation"
+                unit="L"
+                color={colors.secondary}
+              />
 
-          <ProgressChart
-            data={sleepData}
-            title="Sleep"
-            unit="h"
-            color={colors.primaryLight}
-          />
+              <ProgressChart
+                data={sleepData}
+                title="Sommeil"
+                unit="h"
+                color={colors.primaryLight}
+              />
+            </>
+          )}
 
           <View style={{ height: 20 }} />
         </ScrollView>
@@ -388,7 +434,7 @@ export default function ProgressScreen() {
                 )}
                 {achievement.unlocked && achievement.unlockedAt && (
                   <Text style={styles.unlockedDate}>
-                    Unlocked {new Date(achievement.unlockedAt).toLocaleDateString()}
+                    Débloqué le {new Date(achievement.unlockedAt).toLocaleDateString()}
                   </Text>
                 )}
               </View>

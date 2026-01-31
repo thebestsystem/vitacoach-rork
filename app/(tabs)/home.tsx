@@ -1,12 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { MessageCircle, Sparkles, TrendingUp, Target, Activity, Heart, Zap, Video, ChevronRight, Brain, BookOpen } from "lucide-react-native";
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import colors from "@/constants/colors";
 import { useHealth } from "@/contexts/HealthContext";
 import { InlineError } from "@/components/ui/ErrorFallback";
+import { Avatar } from "@/components/ui/Avatar";
 import { selectionFeedback } from "@/utils/haptics";
 import { MorningBriefing } from "@/components/features/briefing/MorningBriefing";
 import { WeeklyReviewModal } from "@/components/features/review/WeeklyReviewModal";
@@ -148,7 +149,7 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.coachHeader}>
-              <Image source={{ uri: COACH_AVATAR }} style={styles.coachAvatar} />
+              <Avatar uri={COACH_AVATAR} initials="VI" size={56} style={{ marginRight: 12 }} />
               <View style={styles.coachInfo}>
                 <Text style={styles.coachLabel}>Votre Coach Exécutif</Text>
                 <Text style={styles.coachName}>Vita</Text>
@@ -308,12 +309,6 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     marginBottom: 20,
-  },
-  coachAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 12,
   },
   coachInfo: {
     flex: 1,
